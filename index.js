@@ -717,7 +717,7 @@ app.get('/view/:filename', async (req, res) => {
           .file-container {
             position: relative;
             max-width: 30%;
-            width: 100%;
+            width: auto;
             animation: rainbow 10s linear infinite;
             border-radius: 10px;
             ${cssCode}
