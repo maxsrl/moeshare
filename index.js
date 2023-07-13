@@ -683,13 +683,12 @@ app.get('/view/:filename', async (req, res) => {
               const cssCode = `box-shadow: 0px 60px 100px 0px ${boxshadowcolor}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
               sendHtmlResponse(cssCode);
             }
-            if (config.themecolor.includes('&dominantColor')) {
+            if (themecolor.includes('&dominantColor')) {
               const dominantColor = fileData ? fileData.dominant_color : null;
               themeColor = dominantColor;
             } else {
-              themeColor = config.themecolor;
+              themeColor = themecolor;
             }
-
             function sendHtmlResponse(cssCode) {
               const htmlResponse = `
       <html>
@@ -698,7 +697,7 @@ app.get('/view/:filename', async (req, res) => {
           ${metaTag}
           <meta property="og:title" content="${ogtitle}">
           <meta property="og:description" content="${ogdescription}">
-          <meta name="theme-color" content="${themeColor !== '&dominantColor' ? themeColor : ''}">
+          <meta name="theme-color" content="${themeColor}">
           <link rel="icon" href="${sitefavicon}" type="image/png" />
           <link href="${baseUrl}/oembed/${filename}" title="oEmbed" rel="alternate" type="application/json+oembed" />
           <style>
