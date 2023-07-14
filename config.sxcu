@@ -1,5 +1,5 @@
-{
-  "Version": "1.0.0",
+﻿{
+  "Version": "15.0.0",
   "Name": "Uploader",
   "DestinationType": "ImageUploader, TextUploader, FileUploader",
   "RequestMethod": "POST",
