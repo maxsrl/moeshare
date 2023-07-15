@@ -1,4 +1,7 @@
 # Uploader
+⚠️ Dies ist noch eine frühe und aktive Entwicklung. Es kann zu Fehlern kommen.
+
+
 Dies ist ein einfacher ShareX-Uploader, der auf Node.js und MariaDB basiert. Der Uploader ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
 
 ## Developer
