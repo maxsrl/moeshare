@@ -94,8 +94,10 @@ Andere Dinge zu beachten:
 | **`GET /view/:filename`** | Dieser Endpunkt stellt ein WebUI für eine spezifische Datei bereit, die dem angegebenen Benutzer gehört. | Nein |
 | **`GET /oembed/:filename`** | Hier erhält ein Benutzer die OEmbed-Daten für eine spezifische Datei. | Nein |
 | **`GET /download/:filename`** | Durch diesen Endpunkt erhält der Benutzer einen direkten Download-Link für eine spezifische Datei. | Nein |
-| **`DELETE /delete/:username/:filename`** | Mit diesem Endpunkt werden alle Daten einer angegebenen Datei gelöscht, einschließlich des Previews, der Datei selbst und des Datenbankeintrags. Der Zugriff ist auf den angegebenen Benutzer beschränkt. | Ja |
-| **`DELETE /delete/:filename`** | Dieser Endpunkt löscht alle Daten einer angegebenen Datei, einschließlich des Previews, der Datei selbst und des Datenbankeintrags. Der Zugriff erfolgt über das Login-Token des eingeloggten Benutzers. | Nein |
+| **`DELETE /file-delete/:username/:filename`** | Mit diesem Endpunkt werden alle Daten einer angegebenen Datei gelöscht, einschließlich des Previews, der Datei selbst und des Datenbankeintrags. Der Zugriff ist auf den angegebenen Benutzer beschränkt. | Ja |
+| **`DELETE /file-delete/:filename`** | Dieser Endpunkt löscht alle Daten einer angegebenen Datei, einschließlich des Previews, der Datei selbst und des Datenbankeintrags. Der Zugriff erfolgt über das Login-Token des eingeloggten Benutzers. | Nein |
+| **`DELETE /user-delete/:username`** | Dieser Endpunkt löscht alle Daten eines Nutzers, einschließlich des Nutzers selbst, des Ordners des Nutzers und des Datenbankeintrags. Der Zugriff erfolgt über das Login-Token des eingeloggten Benutzers. | Ja |
+| **`DELETE /user-delete`** | Mit diesem Endpunkt werden alle Daten des angemeldeten Nutzers gelöscht, einschließlich des Nutzers selbst, des Ordners des Nutzers und des Datenbankeintrags. Der Zugriff ist auf den angegebenen Benutzer beschränkt. | Nein |
 | **`GET /files/:username`** | Hier erhält der Benutzer eine Liste aller Dateien eines bestimmten Nutzers. | Ja |
 | **`GET /files`** | Durch diesen Endpunkt erhält der Benutzer eine Liste aller Dateien, die dem eingeloggten Benutzer gehören. | Nein |
 
