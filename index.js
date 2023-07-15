@@ -40,7 +40,9 @@ const createTableQuery = `CREATE TABLE IF NOT EXISTS file_data (
   creation_date VARCHAR(255) NOT NULL,
   size_mb DECIMAL(10, 3) NOT NULL,
   size_bytes INT NOT NULL,
-  dominant_color VARCHAR(7) NOT NULL
+  dominant_color VARCHAR(7) NOT NULL,
+  resolution_width INT NOT NULL,
+  resolution_height INT NOT NULL
 )`;
 
 connection.query(createTableQuery, function (error, results, fields) {
