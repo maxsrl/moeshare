@@ -673,10 +673,10 @@ app.get('/view/:filename', async (req, res) => {
             });
 
             const resolution = fileData.resolution_width + 'x' + fileData.resolution_height;
-            const resolutionHTML = fileData.resolution_width !== 0 && fileData.resolution_width !== 0 ? `Auflösung: ${resolution}` : '';
+            const resolutionHTML = fileData.resolution_width !== 0 && fileData.resolution_height !== 0 ? `Auflösung: ${resolution}` : '';
 
             const isImage = imageFormats.some(format => filename.endsWith(format)) || filename.endsWith('.gif');
-            const isImage2 = imageFormats.some(format => filename.endsWith(format));
+            const isImageWithGif = imageFormats.some(format => filename.endsWith(format));
             const isAudio = audioFormats.some(format => filename.endsWith(format));
             const isVideo = videoFormats.some(format => filename.endsWith(format));
 
@@ -689,11 +689,17 @@ app.get('/view/:filename', async (req, res) => {
           <meta property="og:image" content="${baseUrl}/uploads/${username}/${filename}" />
           <meta property="og:image:secure_url" content="${baseUrl}/uploads/${username}/${filename}" />
           <meta property="og:image:type" content="image.other" />
-          <meta property="og:image:alt" content="BILD" />`;
+          <meta property="og:image:alt" content="BILD" />
+          <meta property="og:image:width" content="${fileData.resolution_width}" />
+          <meta property="og:image:height" content="${fileData.resolution_height}" />
+          <meta name="twitter:card" content="summary_large_image">`;
+
             } else if (isVideo) {
               metaTag = `<meta property="og:video" content="${baseUrl}/uploads/${username}/${filename}" />
           <meta property="og:video:secure_url" content="${baseUrl}/uploads/${username}/${filename}" />
-          <meta property="og:type" content="video.other"/>`;
+          <meta property="og:type" content="video.other"/>
+          <meta property="og:video:width" content="${fileData.resolution_width}" />
+          <meta property="og:video:height" content="${fileData.resolution_height}" />`;
             } else if (isAudio) {
               metaTag = `<meta property="og:audio" content="${baseUrl}/uploads/${username}/${filename}" />
           <meta property="og:audio:secure_url" content="${baseUrl}/uploads/${username}/${filename}" />
@@ -710,7 +716,7 @@ app.get('/view/:filename', async (req, res) => {
               themeColor = themecolor;
             }
 
-            if (isImage2) {
+            if (isImageWithGif) {
               getFileDataFromDatabase(username, filename)
                 .then(fileData => {
                   const dominantColor = fileData ? fileData.dominant_color : null;
