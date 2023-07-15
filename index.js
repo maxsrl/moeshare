@@ -348,9 +348,9 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
     });
   };
 
-  const isImageMimeType = (mimeType) => {
-    return mimeType.startsWith('image/');
-  };
+  function isImageMimeType(mimeType) {
+    return mimeType.startsWith('image/png', 'image/jpeg','image/gif', 'image/tiff', 'image/bmp', 'image/tiff');
+  }
 
   const getMimeType = (filePath) => {
     const mime = require('mime-types');
@@ -372,12 +372,58 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
     second: '2-digit',
     timeZone: 'Europe/Berlin'
   });
+
+  const isImage = imageFormats.some(format => filename.endsWith(format)) || filename.endsWith('.gif');
+  const isVideo = videoFormats.some(format => filename.endsWith(format));
+
+  let resolution;
+  if (isImage) {
+    try {
+      resolution = await getImageResolution(filePath);
+    } catch (error) {
+      console.error('Fehler beim Ermitteln der Bildauflösung:', error);
+      resolution = { width: 0, height: 0 };
+    }
+  } else if (isVideo) {
+    try {
+      resolution = await getVideoResolution(filePath);
+    } catch (error) {
+      console.error('Fehler beim Ermitteln der Videoauflösung:', error);
+      resolution = { width: 0, height: 0 };
+    }
+  } else {
+    resolution = { width: 0, height: 0 };
+  }
+
+  function getVideoResolution(filePath) {
+    return new Promise((resolve, reject) => {
+      if (!isVideoMimeType(getMimeType(filePath))) {
+        reject(new Error('Keine Videodatei'));
+      } else {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+          if (err) {
+            reject(err);
+          } else {
+            const { width, height } = metadata.streams[0];
+            resolve({ width, height });
+          }
+        });
+      }
+    });
+  }
+
+  async function getImageResolution(filePath) {
+    const metadata = await sharp(filePath).metadata();
+    return { width: metadata.width, height: metadata.height };
+  }
+
   const sizeInBytes = fileStats.size;
   const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(3);
 
-  const saveFileDataToDatabase = async (username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor) => {
-    const query = 'INSERT INTO file_data (username, filename, creation_date, size_mb, size_bytes, dominant_color) VALUES (?, ?, ?, ?, ?, ?)';
-    const values = [username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor];
+  const saveFileDataToDatabase = async (username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor, resolution) => {
+    const query = 'INSERT INTO file_data (username, filename, creation_date, size_mb, size_bytes, dominant_color, resolution_width, resolution_height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    const values = [username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor, resolution.width, resolution.height];
+
 
     connection.query(query, values, async function (error, results, fields) {
       if (error) {
@@ -422,12 +468,12 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
     });
   };
 
-  saveFileDataToDatabase(req.user.username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor);
+  saveFileDataToDatabase(req.user.username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor, resolution);
   const webhookData = {
     embeds: [
       {
         title: 'Neue Datei hochgeladen',
-        description: 'Dateiname: **' + filename + '**\nBenutzername: **' + req.user.username + '**\nGröße: **' + sizeInMB + 'MB**\nHauptfarbe: **' + dominantColor + '**',
+        description: 'Dateiname: **' + filename + '**\nBenutzername: **' + req.user.username + '**\nGröße: **' + sizeInMB + 'MB**\nAuflösung: **' + resolution.width + 'x' + resolution.height + '**\nHauptfarbe: **' + dominantColor + '**',
         color: discordWebhookSuccessColor,
       }
     ],
@@ -624,10 +670,14 @@ app.get('/view/:filename', async (req, res) => {
               timeZone: 'Europe/Berlin'
             });
 
+            const resolution = fileData.resolution_width + 'x' + fileData.resolution_height;
+            const resolutionHTML = fileData.resolution_width !== 0 && fileData.resolution_width !== 0 ? `Auflösung: ${resolution}` : '';
+
             const isImage = imageFormats.some(format => filename.endsWith(format)) || filename.endsWith('.gif');
             const isImage2 = imageFormats.some(format => filename.endsWith(format));
             const isAudio = audioFormats.some(format => filename.endsWith(format));
             const isVideo = videoFormats.some(format => filename.endsWith(format));
+
 
             let metaTag = '';
 
@@ -649,6 +699,15 @@ app.get('/view/:filename', async (req, res) => {
 
             }
 
+            let themeColor = '#ffffff';
+
+            if (themecolor.includes('&dominantColor')) {
+              const dominantColor = fileData ? fileData.dominant_color : null;
+              themeColor = dominantColor;
+            } else {
+              themeColor = themecolor;
+            }
+            
             if (isImage2) {
               getFileDataFromDatabase(username, filename)
                 .then(fileData => {
@@ -668,14 +727,14 @@ app.get('/view/:filename', async (req, res) => {
                     ],
                     username: 'Datei-Uploader',
                   };
-
+            
                   try {
                     await axios.post(discordWebhookUrl, webhookData);
                     console.log('Webhook-Log erfolgreich an Discord gesendet.');
                   } catch (error) {
                     console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
                   }
-
+            
                   const cssCode = `box-shadow: 0px 60px 100px 0px ${boxshadowcolor}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
                   sendHtmlResponse(cssCode);
                 });
@@ -683,14 +742,9 @@ app.get('/view/:filename', async (req, res) => {
               const cssCode = `box-shadow: 0px 60px 100px 0px ${boxshadowcolor}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
               sendHtmlResponse(cssCode);
             }
-            if (themecolor.includes('&dominantColor')) {
-              const dominantColor = fileData ? fileData.dominant_color : null;
-              themeColor = dominantColor;
-            } else {
-              themeColor = themecolor;
-            }
+            
             function sendHtmlResponse(cssCode) {
-              const htmlResponse = `
+              const htmlResponse = `          
       <html>
         <head>
           <title>${sitetitle}</title>
@@ -856,7 +910,8 @@ app.get('/view/:filename', async (req, res) => {
           <div class="stats">
             Hochgeladen von: ${username}<br>
             Hochgeladen am: ${creationDate}<br>
-            Größe der Datei: ${sizeInMB} MB
+            Größe der Datei: ${sizeInMB} MB<br>
+            ${resolutionHTML}
           </div>
           <div class="copyright">
             ${copyright}
@@ -884,6 +939,7 @@ app.get('/oembed/:filename', async (req, res) => {
       return res.status(404).send({ error: 'Datei nicht gefunden' });
     }
     const username = file.username;
+    const fileData = await getFileDataFromDatabase(username, filename);
 
     const filePath = path.join(__dirname, 'uploads', username, filename);
     fs.access(filePath, fs.constants.F_OK, (err) => {
@@ -911,8 +967,8 @@ app.get('/oembed/:filename', async (req, res) => {
         author_url: author_url,
         author_name: author_name,
         url: `${baseUrl}/view/${filename}`,
-        width: isImage ? 800 : null,
-        height: isImage ? 600 : null,
+        width: fileData.resolution_width,
+        height: fileData.resolution_height,
         provider_name: provider_name,
         provider_url: provider_url,
         html: `<iframe src="${baseUrl}/uploads/${username}/${filename}" width="500" height="500" frameborder="0"></iframe>`
