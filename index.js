@@ -351,7 +351,7 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
   };
 
   function isImageMimeType(mimeType) {
-    return mimeType.startsWith('image/png', 'image/jpeg','image/gif', 'image/tiff', 'image/bmp', 'image/tiff');
+    return mimeType.startsWith('image/png', 'image/jpeg', 'image/gif', 'image/tiff', 'image/bmp', 'image/tiff');
   }
 
   const getMimeType = (filePath) => {
@@ -709,7 +709,7 @@ app.get('/view/:filename', async (req, res) => {
             } else {
               themeColor = themecolor;
             }
-            
+
             if (isImage2) {
               getFileDataFromDatabase(username, filename)
                 .then(fileData => {
@@ -729,14 +729,14 @@ app.get('/view/:filename', async (req, res) => {
                     ],
                     username: 'Datei-Uploader',
                   };
-            
+
                   try {
                     await axios.post(discordWebhookUrl, webhookData);
                     console.log('Webhook-Log erfolgreich an Discord gesendet.');
                   } catch (error) {
                     console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
                   }
-            
+
                   const cssCode = `box-shadow: 0px 60px 100px 0px ${boxshadowcolor}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
                   sendHtmlResponse(cssCode);
                 });
@@ -744,7 +744,7 @@ app.get('/view/:filename', async (req, res) => {
               const cssCode = `box-shadow: 0px 60px 100px 0px ${boxshadowcolor}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
               sendHtmlResponse(cssCode);
             }
-            
+
             function sendHtmlResponse(cssCode) {
               const htmlResponse = `          
       <html>
@@ -1010,6 +1010,220 @@ app.get('/download/:filename', async (req, res) => {
   }
 });
 
+app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) => {
+  const username = req.params.username;
+
+  try {
+    const deleteQuery = 'DELETE FROM users WHERE username = ?';
+    const deleteValues = [username];
+
+    connection.query(deleteQuery, deleteValues, async function (error, results, fields) {
+      if (error) {
+        console.error('Fehler beim Löschen des Nutzers aus der Datenbank:', error);
+        const webhookData = {
+          embeds: [
+            {
+              title: 'Ein Nutzer wurde gelöscht',
+              description: '\n' + error,
+              color: discordWebhookErrorColor,
+            }
+          ],
+          username: 'Datei-Uploader',
+        };
+
+        try {
+          await axios.post(discordWebhookUrl, webhookData);
+          console.log('Webhook-Log erfolgreich an Discord gesendet.');
+        } catch (error) {
+          console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
+        }
+        res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
+      } else {
+        console.log('Nutzer erfolgreich aus der Datenbank gelöscht.');
+
+        const userFolderPath = path.join(__dirname, 'uploads', username);
+        if (fs.existsSync(userFolderPath)) {
+          fs.rmdirSync(userFolderPath, { recursive: true });
+          console.log('Nutzerordner erfolgreich gelöscht.');
+        }
+
+        const deleteFilesQuery = 'DELETE FROM file_data WHERE username = ?';
+        connection.query(deleteFilesQuery, deleteValues, async function (error, results, fields) {
+          if (error) {
+            console.error('Fehler beim Löschen der Dateieinträge aus der Datenbank:', error);
+            const webhookData = {
+              embeds: [
+                {
+                  title: 'Ein Nutzer wurde gelöscht',
+                  description: '\n' + error,
+                  color: discordWebhookErrorColor,
+                }
+              ],
+              username: 'Datei-Uploader',
+            };
+
+            try {
+              await axios.post(discordWebhookUrl, webhookData);
+              console.log('Webhook-Log erfolgreich an Discord gesendet.');
+            } catch (error) {
+              console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
+            }
+            res.status(500).json({ error: 'Fehler beim Löschen der Dateieinträge' });
+          } else {
+            console.log('Dateieinträge erfolgreich aus der Datenbank gelöscht.');
+
+            const webhookData = {
+              embeds: [
+                {
+                  title: 'Ein Nutzer wurde gelöscht',
+                  description: 'Der Nutzer ' + username + ' wurde erfolgreich gelöscht.',
+                  color: discordWebhookSuccessColor,
+                }
+              ],
+              username: 'Datei-Uploader',
+            };
+
+            try {
+              await axios.post(discordWebhookUrl, webhookData);
+              console.log('Webhook-Log erfolgreich an Discord gesendet.');
+            } catch (error) {
+              console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
+            }
+            res.json({ success: true, message: 'Nutzer erfolgreich gelöscht' });
+          }
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Fehler beim Löschen des Nutzers:', error);
+    const webhookData = {
+      embeds: [
+        {
+          title: 'Ein Nutzer löschen',
+          description: '\n' + error,
+          color: discordWebhookErrorColor,
+        }
+      ],
+      username: 'Datei-Uploader',
+    };
+
+    try {
+      await axios.post(discordWebhookUrl, webhookData);
+      console.log('Webhook-Log erfolgreich an Discord gesendet.');
+    } catch (error) {
+      console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
+    }
+    res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
+  }
+});
+
+app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
+  const username = req.TokenUsername;
+
+  try {
+    const deleteQuery = 'DELETE FROM users WHERE username = ?';
+    const deleteValues = [username];
+
+    connection.query(deleteQuery, deleteValues, async function (error, results, fields) {
+      if (error) {
+        console.error('Fehler beim Löschen des Nutzers aus der Datenbank:', error);
+        const webhookData = {
+          embeds: [
+            {
+              title: 'Ein Nutzer wurde gelöscht',
+              description: '\n' + error,
+              color: discordWebhookErrorColor,
+            }
+          ],
+          username: 'Datei-Uploader',
+        };
+
+        try {
+          await axios.post(discordWebhookUrl, webhookData);
+          console.log('Webhook-Log erfolgreich an Discord gesendet.');
+        } catch (error) {
+          console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
+        }
+        res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
+      } else {
+        console.log('Nutzer erfolgreich aus der Datenbank gelöscht.');
+
+        const userFolderPath = path.join(__dirname, 'uploads', username);
+        if (fs.existsSync(userFolderPath)) {
+          fs.rmdirSync(userFolderPath, { recursive: true });
+          console.log('Nutzerordner erfolgreich gelöscht.');
+        }
+
+        const deleteFilesQuery = 'DELETE FROM file_data WHERE username = ?';
+        connection.query(deleteFilesQuery, deleteValues, async function (error, results, fields) {
+          if (error) {
+            console.error('Fehler beim Löschen der Dateieinträge aus der Datenbank:', error);
+            const webhookData = {
+              embeds: [
+                {
+                  title: 'Ein Nutzer wurde gelöscht',
+                  description: '\n' + error,
+                  color: discordWebhookErrorColor,
+                }
+              ],
+              username: 'Datei-Uploader',
+            };
+
+            try {
+              await axios.post(discordWebhookUrl, webhookData);
+              console.log('Webhook-Log erfolgreich an Discord gesendet.');
+            } catch (error) {
+              console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
+            }
+            res.status(500).json({ error: 'Fehler beim Löschen der Dateieinträge' });
+          } else {
+            console.log('Dateieinträge erfolgreich aus der Datenbank gelöscht.');
+
+            const webhookData = {
+              embeds: [
+                {
+                  title: 'Ein Nutzer wurde gelöscht',
+                  description: 'Der Nutzer ' + username + ' wurde erfolgreich gelöscht.',
+                  color: discordWebhookSuccessColor,
+                }
+              ],
+              username: 'Datei-Uploader',
+            };
+
+            try {
+              await axios.post(discordWebhookUrl, webhookData);
+              console.log('Webhook-Log erfolgreich an Discord gesendet.');
+            } catch (error) {
+              console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
+            }
+            res.json({ success: true, message: 'Nutzer erfolgreich gelöscht' });
+          }
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Fehler beim Löschen des Nutzers:', error);
+    const webhookData = {
+      embeds: [
+        {
+          title: 'Ein Nutzer löschen',
+          description: '\n' + error,
+          color: discordWebhookErrorColor,
+        }
+      ],
+      username: 'Datei-Uploader',
+    };
+
+    try {
+      await axios.post(discordWebhookUrl, webhookData);
+      console.log('Webhook-Log erfolgreich an Discord gesendet.');
+    } catch (error) {
+      console.error('Fehler beim Senden des Webhook-Logs an Discord:', error);
+    }
+    res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
+  }
+});
+
 const deleteFile = async (username, filename) => {
   let filePath = path.join(__dirname, 'uploads', username, filename);
   let previewPath = path.join(__dirname, 'uploads', username, 'preview', filename);
@@ -1076,7 +1290,7 @@ const deleteFile = async (username, filename) => {
   });
 };
 
-app.delete('/delete/:username/:filename', authenticate, isAdmin, async (req, res) => {
+app.delete('/delete-file/:username/:filename', authenticate, isAdmin, async (req, res) => {
   try {
     await deleteFile(req.params.username, req.params.filename);
     res.json({ success: true, message: 'Datei erfolgreich gelöscht' });
@@ -1120,7 +1334,7 @@ app.delete('/delete/:username/:filename', authenticate, isAdmin, async (req, res
   }
 });
 
-app.delete('/delete/:filename', authenticate, TokenUsername, async (req, res) => {
+app.delete('/delete-file/:filename', authenticate, TokenUsername, async (req, res) => {
   try {
     await deleteFile(req.TokenUsername, req.params.filename);
     res.json({ success: true, message: 'Datei erfolgreich gelöscht' });
