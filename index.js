@@ -12,7 +12,7 @@ const jwt = require('jsonwebtoken');
 let mysql = require('mysql');
 
 const config = require('./config');
-const { audioFormats, videoFormats, imageFormats, baseUrl, port, jwttoken, sitetitle, sitefavicon, ogtitle, ogdescription, themecolor, databaseHost, databasePort, databaseUser, databasePassword, databaseDatabase, author_url, author_name, provider_name, provider_url, boxshadowcolor, copyright, discordWebhookName, discordWebhookUrl, discordWebhookSuccessColor, discordWebhookErrorColor, redirectUrl } = config;
+const { audioFormats, videoFormats, imageFormats, baseUrl, port, jwttoken, sitetitle, sitefavicon, ogtitle, ogdescription, themecolor, databaseHost, databasePort, databaseUser, databasePassword, databaseDatabase, author_url, author_name, provider_name, provider_url, UseDominantColor, dominantColorStatic, boxshadowcolor, copyright, discordWebhookName, discordWebhookUrl, discordWebhookSuccessColor, discordWebhookErrorColor, redirectUrl } = config;
 
 const app = express();
 app.use(express.json());
@@ -81,7 +81,7 @@ const createDirectoriesForAllUsers = async () => {
           color: discordWebhookSuccessColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
@@ -101,7 +101,7 @@ const createDirectoriesForAllUsers = async () => {
           color: discordWebhookErrorColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
@@ -491,7 +491,12 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
     return mimeType;
   };
 
-  const dominantColor = await extractDominantColor(imagePath);
+let dominantColor;
+if (UseDominantColor === true) {
+  dominantColor = await extractDominantColor(imagePath);
+} else {
+  dominantColor = dominantColorStatic;
+}
 
   const fileStats = fs.statSync(filePath);
   const creationDate = fileStats.birthtime.toLocaleString('de-DE', {
@@ -567,7 +572,7 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
               color: discordWebhookErrorColor,
             }
           ],
-          username: 'Datei-Uploader',
+          username: discordWebhookName,
         };
 
         try {
@@ -586,7 +591,7 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
               color: discordWebhookSuccessColor,
             }
           ],
-          username: 'Datei-Uploader',
+          username: discordWebhookName,
         };
 
         try {
@@ -608,7 +613,7 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
         color: discordWebhookSuccessColor,
       }
     ],
-    username: 'Datei-Uploader',
+    username: discordWebhookName,
   };
 
   try {
@@ -671,7 +676,7 @@ const removeMetadataFromImage = async (filePath) => {
           color: discordWebhookSuccessColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
@@ -690,7 +695,7 @@ const removeMetadataFromImage = async (filePath) => {
           color: discordWebhookErrorColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
@@ -718,7 +723,7 @@ const getFileDataFromDatabase = async (username, filename) => {
               color: discordWebhookErrorColor,
             }
           ],
-          username: 'Datei-Uploader',
+          username: discordWebhookName,
         };
 
         try {
@@ -862,7 +867,7 @@ app.get('/view/:filename', async (req, res) => {
                         color: discordWebhookErrorColor,
                       }
                     ],
-                    username: 'Datei-Uploader',
+                    username: discordWebhookName,
                   };
 
                   try {
@@ -1163,7 +1168,7 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
               color: discordWebhookErrorColor,
             }
           ],
-          username: 'Datei-Uploader',
+          username: discordWebhookName,
         };
 
         try {
@@ -1194,7 +1199,7 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
                   color: discordWebhookErrorColor,
                 }
               ],
-              username: 'Datei-Uploader',
+              username: discordWebhookName,
             };
 
             try {
@@ -1215,7 +1220,7 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
                   color: discordWebhookSuccessColor,
                 }
               ],
-              username: 'Datei-Uploader',
+              username: discordWebhookName,
             };
 
             try {
@@ -1239,7 +1244,7 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
           color: discordWebhookErrorColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
@@ -1270,7 +1275,7 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
               color: discordWebhookErrorColor,
             }
           ],
-          username: 'Datei-Uploader',
+          username: discordWebhookName,
         };
 
         try {
@@ -1301,7 +1306,7 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
                   color: discordWebhookErrorColor,
                 }
               ],
-              username: 'Datei-Uploader',
+              username: discordWebhookName,
             };
 
             try {
@@ -1322,7 +1327,7 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
                   color: discordWebhookSuccessColor,
                 }
               ],
-              username: 'Datei-Uploader',
+              username: discordWebhookName,
             };
 
             try {
@@ -1346,7 +1351,7 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
           color: discordWebhookErrorColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
@@ -1390,7 +1395,7 @@ const deleteFile = async (username, filename) => {
               color: discordWebhookErrorColor,
             }
           ],
-          username: 'Datei-Uploader',
+          username: discordWebhookName,
         };
 
         try {
@@ -1410,7 +1415,7 @@ const deleteFile = async (username, filename) => {
               color: discordWebhookSuccessColor,
             }
           ],
-          username: 'Datei-Uploader',
+          username: discordWebhookName,
         };
 
         try {
@@ -1437,7 +1442,7 @@ app.delete('/delete-file/:username/:filename', authenticate, isAdmin, async (req
           color: discordWebhookSuccessColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
@@ -1456,7 +1461,7 @@ app.delete('/delete-file/:username/:filename', authenticate, isAdmin, async (req
           color: discordWebhookErrorColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
@@ -1481,7 +1486,7 @@ app.delete('/delete-file/:filename', authenticate, TokenUsername, async (req, re
           color: discordWebhookSuccessColor,
         }
       ],
-      username: 'Datei-Uploader',
+      username: discordWebhookName,
     };
 
     try {
