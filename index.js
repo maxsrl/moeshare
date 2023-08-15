@@ -388,7 +388,7 @@ const notFoundPage = `
         50% { background-position: 400% 0; }
         100% { background-position: 0 0; }
     }
-    .404-text {
+    .text {
         font-size: 2rem;
         font-family: Arial, sans-serif;
         font-weight: bold;
@@ -413,7 +413,7 @@ const notFoundPage = `
   </style>
 </head>
 <body>
-  <h1 class="404-text">Diese Datei existiert nicht!</h1><br>
+  <h1 class="text">Diese Datei existiert nicht!</h1><br>
   <div class="button-container">
     <button class="button" type="button" onclick="javascript:history.back()">Zurück</button>
   </div>
