@@ -48,6 +48,31 @@ Derzeit wird nur die Lokale Installationsmethoden unterstützt. In Zukunft wird 
 
 </details>
 
+### Lokal mit PM2 Clustering
+
+<details>
+<summary><em>Erweitern für die Lokale Installation mit PM2</em></summary>
+<br>
+
+1. Node.JS v18.X.X installation
+
+   Debian:
+   ```bash
+   cd ~ && apt install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt install nodejs
+   ```
+   Ubuntu:
+   ```bash
+   cd ~ && apt install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt install nodejs
+   ```
+3. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
+4. Passe nun die `config.js` an.
+5. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
+6. Führe `npm i pm2 -g` aus, um PM2 zu installieren.
+7. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
+8. Führe `pm2 start index.js -i max --name Uploader` aus, um den Uploader zu starten und ihn zu Clustern mit allen Verfügbaren Threads.
+
+</details>
+
 ## HTTPS
 Für HTTPS-Unterstützung musst Du einen Reverse-Proxy konfigurieren. Ich empfehle [Caddy], aber jeder Reverse-Proxy funktioniert gut (wie Apache oder Nginx). Eine Beispielkonfiguration für Caddy findest du hier:
 
