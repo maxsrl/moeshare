@@ -26,6 +26,7 @@ module.exports = {
   boxshadowcolor: `#ffffff`, // Wird Angewand, wenn die Datei kein Bild ist.
   copyright: `&copy; ${new Date().getFullYear()} MAX.SRL - All Rights Reserved - <a rel="noreferrer" href="https://max.srl/impressum-datenschutz.html" target="_blank">Impressum & Datenschutz</a> | <a rel="noreferrer" href="https://github.com/MaximilianGT500/uploader" target="_blank">Source Code</a>`, // Copyright Text
   
+  discordWebhookName: 'Datei-Uploader',
   discordWebhookUrl: 'https://discord.com/api/webhooks/XXXX/XXXX', // Für Discord-Webhook loggin
   discordWebhookSuccessColor: 0x03fc28, // Embed-Farbe (0xHEXCOLORCODEOHNE-#)
   discordWebhookErrorColor: 0xfc0303, // Embed-Farbe (0xHEXCOLORCODEOHNE-#)
