@@ -16,9 +16,12 @@ Du bist ein Developer und siehst hier Fehler oder hast Verbesserungsvorschläge?
 - Integrierter Webviewer mit Bilder, Video- und Audioplayer
 - Einbetten von Bildern, Gifs und Videos direkt in Discord
 - Informations- und Fehler-Protokoll mit anpassbaren Discord-Webhook
-- macOS/Linux-Unterstützung mit alternativen Clients wie [Flameshot] ([Skript für Esel]) & [MagicCap]
+- macOS/Linux-Unterstützung mit alternativen Clients wie [Flameshot] & [MagicCap]
 - Liste aller Dateien
 - ...
+
+[Flameshot]: https://flameshot.org/
+[MagicCap]: https://magiccap.me/
 
 ## Installation
 
