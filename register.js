@@ -15,16 +15,6 @@ if (!fs.existsSync(uploadsFolderPath)) {
   console.log('Uploads-Ordner wurde erstellt.');
 }
 
-const generateToken = (id, username, role) => {
-  const payload = {
-    id,
-    username,
-    role
-  };
-  const token = jwt.sign(payload, jwttoken);
-  return token;
-};
-
 const connection = mysql.createConnection({
   host: databaseHost,
   port: databasePort,
@@ -48,6 +38,16 @@ const createTableQuery = `
 connection.query(createTableQuery, function (error, results, fields) {
   if (error) throw error;
 });
+
+const generateToken = (id, username, role) => {
+  const payload = {
+    id,
+    username,
+    role
+  };
+  const token = jwt.sign(payload, jwttoken);
+  return token;
+};
 
 const run = async () => {
   console.log('\nBitte geben Sie die folgenden Informationen ein, um einen neuen Benutzer zu erstellen.\nNutze beim Passwort keine Sonderzeichen!\n');
