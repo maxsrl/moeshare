@@ -76,6 +76,56 @@ Derzeit wird nur die Lokale Installationsmethoden unterstützt. In Zukunft wird 
 
 </details>
 
+### Docker
+
+<details>
+<summary><em>Erweitern für die Docker/Compose Installation</em></summary>
+<br>
+
+1. Docker & Docker Compose Installieren
+   
+   Debian (Debian Bookworm 12 (stable), Debian Bullseye 11 (oldstable)):
+   ```bash
+    sudo apt-get update
+    sudo apt-get install ca-certificates curl gnupg
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    echo \
+    "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+    "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   ```
+   
+   Ubuntu (Ubuntu Lunar 23.04, Ubuntu Kinetic 22.10, Ubuntu Jammy 22.04 (LTS), Ubuntu Focal 20.04 (LTS)):
+   ```bash
+    sudo apt-get update
+    sudo apt-get install ca-certificates curl gnupg
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    echo \
+    "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   ```
+   
+2. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
+2. Bearbeite die `config.js` nach deinen Vorstellunge.
+3. Bearbeite die `docker-compose.yml`, wenn du den Port in der Anwendung geändert hast.
+5. Führe `docker compose build && docker compose up -d && docker compose exec uploader npm run register && docker compose restart` aus, um den ersten Nutzer zu erstellen und um den Uploader zu starten.
+
+
+Wie kann ich ein npm-Script ausführen? Nutze dafür `docker compose exec uploader npm run BEFEHL`
+
+Wie kann ich Updaten? Nutze dafür: `git pull && docker compose build --no-cache && docker compose up -d`
+
+</details>
+
 ## HTTPS
 Für HTTPS-Unterstützung musst Du einen Reverse-Proxy konfigurieren. Ich empfehle [Caddy], aber jeder Reverse-Proxy funktioniert gut (wie Apache oder Nginx). Eine Beispielkonfiguration für Caddy findest du hier:
 

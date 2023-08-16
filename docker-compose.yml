@@ -1,0 +1,20 @@
+services:
+  uploader:
+    build: .
+    container_name: uploader-docker
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./uploads:/opt/uploader/uploads
+      - ./public:/opt/uploader/public
+      - type: bind
+        source: ./config.js
+        target: /opt/uploader/config.js
+    tmpfs: /tmp # temp files such as uploads are stored here
+    tty: true
+    environment:
+      - NODE_ENV=production # for production
+      - ASS_ENV=docker # docker, local, production (not widely used yet)
+      - LOG_LEVEL=debug # debug, info, warn, error
+      - FORCE_COLOR=3 # force color output
