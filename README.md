@@ -203,7 +203,7 @@ Solltest Du hilfe benötigen, öffne ein [Issue] oder Kontaktiere mich über mei
 [Website]: https://maxi.lol/kontakt/
 
 ## Credits
-- Einiges von der README.md wurde von [ass] übernommen
+- Einiges von der README.md und der docker-compose.yml wurde von [ass] übernommen
 
 [ass]: https://github.com/tycrek/ass
 
