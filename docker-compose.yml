@@ -1,4 +1,16 @@
+version: '3.8'
 services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      - MYSQL_DATABASE=uploader
+      - MYSQL_ROOT_PASSWORD=8RAcsRYSj75nePoCvzatZeqtaeyd8p7C4EtyWx78d2XwdJqa7c5SLuWqojWuz3yd
+    ports:
+      - "3306"
+    volumes:
+      - db:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
   uploader:
     build: .
     container_name: uploader-docker
@@ -11,10 +23,15 @@ services:
       - type: bind
         source: ./config.js
         target: /opt/uploader/config.js
-    tmpfs: /tmp # temp files such as uploads are stored here
+    tmpfs: /tmp
     tty: true
     environment:
-      - NODE_ENV=production # for production
-      - ASS_ENV=docker # docker, local, production (not widely used yet)
-      - LOG_LEVEL=debug # debug, info, warn, error
-      - FORCE_COLOR=3 # force color output
+      - NODE_ENV=production
+      - ASS_ENV=docker
+      - LOG_LEVEL=debug
+      - FORCE_COLOR=3
+    links:
+      - db
+volumes:
+  db:
+    driver: local

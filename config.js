@@ -12,11 +12,11 @@ module.exports = {
   ogdescription: `EXAMPLE`, // Meta-Tag og:description
   themecolor: '&dominantColor', // Meta-Tag theme-color - wenn &dominantColor als themecolor genommen wird, ist das Embed in der Dominanten Farbe der Datei
 
-  databaseHost: ``, // MariaDB - Hostname
-  databasePort: 3306, // MariaDB - Port
-  databaseUser: ``, // MariaDB - Datenbank Nutzer
-  databasePassword: ``, // MariaDB - Datenbank Passwort
-  databaseDatabase: ``, // MariaDB - Datenbank
+  databaseHost: `db`, // MariaDB - Hostname (Wenn Docker genutzt wird, nicht ändern.)
+  databasePort: 3306, // MariaDB - Port (Wenn Docker genutzt wird, nicht ändern.)
+  databaseUser: `root`, // MariaDB - Datenbank Nutzer (Wenn Docker genutzt wird, nicht ändern.)
+  databasePassword: `8RAcsRYSj75nePoCvzatZeqtaeyd8p7C4EtyWx78d2XwdJqa7c5SLuWqojWuz3yd`, // MariaDB - Datenbank Passwort (Wenn Docker genutzt wird, nicht ändern.)
+  databaseDatabase: `uploader`, // MariaDB - Datenbank (Wenn Docker genutzt wird, nicht ändern.)
 
   author_url: `https://example.com`, // OEmbed
   author_name: `EXAMPLE`, // OEmbed
