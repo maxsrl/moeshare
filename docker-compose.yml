@@ -1,16 +1,17 @@
 version: '3.8'
 services:
-  db:
-    image: mysql:8.0
-    restart: always
+  datenbank:
+    image: mariadb
     environment:
-      - MYSQL_DATABASE=uploader
-      - MYSQL_ROOT_PASSWORD=8RAcsRYSj75nePoCvzatZeqtaeyd8p7C4EtyWx78d2XwdJqa7c5SLuWqojWuz3yd
-    ports:
-      - "3306"
+      MYSQL_ROOT_PASSWORD: 4hbyjRe3CJWmgkNBkCJxfEgLzxNJ6q6npqm6froM5mKmVehg7aq6NKsvWeNh8iJX
+      MYSQL_DATABASE: uploader
+      MYSQL_USER: uploader
+      MYSQL_PASSWORD: 8RAcsRYSj75nePoCvzatZeqtaeyd8p7C4EtyWx78d2XwdJqa7c5SLuWqojWuz3yd
     volumes:
-      - db:/var/lib/mysql
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - data:/var/lib/mysql
+      - ./dev/mariadb:/docker-entrypoint-initdb.d
+    ports:
+      - "36432:3306" # Oft ist der Standart Port 3306 belegt. Die Portanpassung verhindert dies.
   uploader:
     build: .
     container_name: uploader-docker
@@ -27,11 +28,9 @@ services:
     tty: true
     environment:
       - NODE_ENV=production
-      - ASS_ENV=docker
       - LOG_LEVEL=debug
       - FORCE_COLOR=3
     links:
-      - db
+      - datenbank
 volumes:
-  db:
-    driver: local
+  data:
