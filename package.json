@@ -41,7 +41,10 @@
     "js",
     "mariadb",
     "mysql",
-    "fast"
+    "fast",
+	"docker",
+	"docker-compose",
+	"docker-image"
   ],
   "author": "MaximilianGT500",
   "license": "MIT",
