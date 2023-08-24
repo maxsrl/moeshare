@@ -1,4 +1,4 @@
-FROM node:latest
+FROM node:current-slim
 
 WORKDIR /opt/uploader/
 COPY . ./
