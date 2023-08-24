@@ -1,8 +1,8 @@
 const axios = require('axios');
 const readlineSync = require('readline-sync');
-const config = require('./config');
 
-const { baseUrl } = config;
+require('dotenv').config();
+const BASE_URL = process.env.BASE_URL;
 
 async function login() {
   try {
@@ -11,7 +11,7 @@ async function login() {
       hideEchoBack: true
     });
 
-    const response = await axios.post(`${baseUrl}/login`, {
+    const response = await axios.post(`${BASE_URL}/login`, {
       username: username,
       password: password
     });
