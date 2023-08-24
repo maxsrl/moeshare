@@ -3,6 +3,7 @@ services:
   datenbank:
     image: mariadb:latest
     container_name: uploader-datenbank
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: 4hbyjRe3CJWmgkNBkCJxfEgLzxNJ6q6npqm6froM5mKmVehg7aq6NKsvWeNh8iJX
       MYSQL_DATABASE: uploader
