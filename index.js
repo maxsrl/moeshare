@@ -11,8 +11,12 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 let mysql = require('mysql');
 
-const config = require('./config');
-const { audioFormats, videoFormats, imageFormats, baseUrl, port, jwttoken, sitetitle, sitefavicon, ogtitle, ogdescription, themecolor, databaseHost, databasePort, databaseUser, databasePassword, databaseDatabase, author_url, author_name, provider_name, provider_url, UseDominantColor, dominantColorStatic, boxshadowcolor, copyright, discordWebhookName, discordWebhookUrl, discordWebhookSuccessColor, discordWebhookErrorColor, redirectUrl } = config;
+require('dotenv').config();
+const {BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
+const AUDIO_FORMATS = process.env.AUDIO_FORMATS.split(',');
+const VIDEO_FORMATS = process.env.VIDEO_FORMATS.split(',');
+const IMAGE_FORMATS = process.env.IMAGE_FORMATS.split(',');
+const USE_DOMINANT_COLOR = process.env.USE_DOMINANT_COLOR === 'true';
 
 const app = express();
 app.use(express.json());
@@ -20,15 +24,15 @@ app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/', (req, res) => {
-  res.status(302).location(redirectUrl).json({});
+  res.status(302).location(REDIRECT_URL).json({});
 });
 
 let connection = mysql.createConnection({
-  host: databaseHost,
-  port: databasePort,
-  user: databaseUser,
-  password: databasePassword,
-  database: databaseDatabase,
+  host: DATABASE_HOST,
+  port: DATABASE_PORT,
+  user: DATABASE_USER,
+  password: DATABASE_PASSWORD,
+  database: DATABASE_DATABASE,
   connectTimeout: 30000
 });
 
@@ -39,6 +43,10 @@ connection.connect((error) => {
   }
   console.log('[INFO] | » Die Verbindung zur Datenbank wurde erfolgreich hergestellt.');
 });
+
+function parseColor(hexColor) {
+  return parseInt(hexColor, 16);
+}
 
 const createTableQuery = `CREATE TABLE IF NOT EXISTS file_data (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -78,14 +86,14 @@ const createDirectoriesForAllUsers = async () => {
         {
           title: 'System',
           description: 'Alle Benutzerordner wurden erfolgreich erstellt.',
-          color: discordWebhookSuccessColor,
+          color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -98,14 +106,14 @@ const createDirectoriesForAllUsers = async () => {
         {
           title: 'System',
           description: 'Fehler beim Erstellen der Benutzerordner\n' + error,
-          color: discordWebhookErrorColor,
+          color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -174,7 +182,7 @@ const generateToken = async (user) => {
     username: user.username,
   };
 
-  const token = jwt.sign(payload, jwttoken);
+  const token = jwt.sign(payload, JWT_TOKEN);
 
   const updateUserQuery = 'UPDATE users SET token = ? WHERE id = ?';
   connection.query(updateUserQuery, [token, user.id], function (error, results, fields) {
@@ -209,7 +217,7 @@ const authenticate = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, jwttoken);
+    const decoded = jwt.verify(token, JWT_TOKEN);
     req.user = decoded;
 
     const user = await getUserByUsername(decoded.username);
@@ -304,10 +312,10 @@ const TokenUsername = async (req, res, next) => {
 const notFoundPage = `
 <html>
 <head>
-  <title>404 » ${sitetitle} </title>
-  <meta property="og:title" content="${ogtitle}">
-  <meta property="og:description" content="${ogdescription}">
-  <link rel="icon" href="${sitefavicon}" type="image/png" />
+  <title>404 » ${SITE_TITLE} </title>
+  <meta property="og:title" content="${OG_TITLE}">
+  <meta property="og:description" content="${OG_DESCRIPTION}">
+  <link rel="icon" href="${SITE_FAVICON}" type="image/png" />
   <style>
   body {
     display: flex;
@@ -418,7 +426,7 @@ const notFoundPage = `
     <button class="button" type="button" onclick="javascript:history.back()">Zurück</button>
   </div>
   <div class="copyright">
-    ${copyright}
+    ${COPYRIGHT_TEXT}
   </div>
 </body>
 </html>`;
@@ -433,7 +441,7 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
   const filePath = path.join(userUploadsPath, filename);
   const previewPath = path.join(userUploadsPath, 'preview', filename);
 
-  if (imageFormats.some(format => filename.endsWith(format))) {
+  if (IMAGE_FORMATS.some(format => filename.endsWith(format))) {
     await sharp(filePath)
       .webp({ quality: 50 })
       .toFile(previewPath);
@@ -443,12 +451,12 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
 
   res.json({
     success: true,
-    file: `${baseUrl}/uploads/${req.TokenUsername}/${filename}`,
-    view: `${baseUrl}/view/${filename}`,
-    preview: imageFormats.some(format => filename.endsWith(format))
-      ? `${baseUrl}/uploads/${req.TokenUsername}/preview/${filename}`
-      : `${baseUrl}/uploads/${req.TokenUsername}/${filename}`,
-    delete: `${baseUrl}/delete/${filename}`,
+    file: `${BASE_URL}/uploads/${req.TokenUsername}/${filename}`,
+    view: `${BASE_URL}/view/${filename}`,
+    preview: IMAGE_FORMATS.some(format => filename.endsWith(format))
+      ? `${BASE_URL}/uploads/${req.TokenUsername}/preview/${filename}`
+      : `${BASE_URL}/uploads/${req.TokenUsername}/${filename}`,
+    delete: `${BASE_URL}/delete/${filename}`,
   });
 
   const imagePath = `./uploads/${req.TokenUsername}/${filename}`;
@@ -492,10 +500,10 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
   };
 
 let dominantColor;
-if (UseDominantColor === true) {
+if (USE_DOMINANT_COLOR === true) {
   dominantColor = await extractDominantColor(imagePath);
 } else {
-  dominantColor = dominantColorStatic;
+  dominantColor = DOMINANT_COLOR_STATIC;
 }
 
   const fileStats = fs.statSync(filePath);
@@ -509,8 +517,8 @@ if (UseDominantColor === true) {
     timeZone: 'Europe/Berlin'
   });
 
-  const isImage = imageFormats.some(format => filename.endsWith(format)) || filename.endsWith('.gif');
-  const isVideo = videoFormats.some(format => filename.endsWith(format));
+  const isImage = IMAGE_FORMATS.some(format => filename.endsWith(format)) || filename.endsWith('.gif');
+  const isVideo = VIDEO_FORMATS.some(format => filename.endsWith(format));
 
   let resolution;
   if (isImage) {
@@ -569,14 +577,14 @@ if (UseDominantColor === true) {
             {
               title: 'Neue Datei hochgeladen',
               description: 'Fehler beim Speichern der Dateidaten in die Datenbank\n' + error,
-              color: discordWebhookErrorColor,
+              color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
             }
           ],
-          username: discordWebhookName,
+          username: DISCORD_WEBHOOK_NAME,
         };
 
         try {
-          await axios.post(discordWebhookUrl, webhookData);
+          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
         } catch (error) {
           console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -588,14 +596,14 @@ if (UseDominantColor === true) {
             {
               title: 'Neue Datei hochgeladen',
               description: 'Dateidaten erfolgreich in die Datenbank gespeichert.',
-              color: discordWebhookSuccessColor,
+              color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
             }
           ],
-          username: discordWebhookName,
+          username: DISCORD_WEBHOOK_NAME,
         };
 
         try {
-          await axios.post(discordWebhookUrl, webhookData);
+          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
         } catch (error) {
           console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -610,14 +618,14 @@ if (UseDominantColor === true) {
       {
         title: 'Neue Datei hochgeladen',
         description: 'Dateiname: **' + filename + '**\nBenutzername: **' + req.user.username + '**\nGröße: **' + sizeInMB + 'MB**\nAuflösung: **' + resolution.width + 'x' + resolution.height + '**\nHauptfarbe: **' + dominantColor + '**',
-        color: discordWebhookSuccessColor,
+        color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
       }
     ],
-    username: discordWebhookName,
+    username: DISCORD_WEBHOOK_NAME,
   };
 
   try {
-    await axios.post(discordWebhookUrl, webhookData);
+    await axios.post(DISCORD_WEBHOOK_URL, webhookData);
     console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
   } catch (error) {
     console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -673,14 +681,14 @@ const removeMetadataFromImage = async (filePath) => {
         {
           title: 'Neue Datei hochgeladen',
           description: 'Metadaten erfolgreich entfernt.',
-          color: discordWebhookSuccessColor,
+          color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -692,14 +700,14 @@ const removeMetadataFromImage = async (filePath) => {
         {
           title: 'Neue Datei hochgeladen',
           description: 'Fehler beim Entfernen der Metadaten!\nFehler:' + error,
-          color: discordWebhookErrorColor,
+          color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -720,14 +728,14 @@ const getFileDataFromDatabase = async (username, filename) => {
             {
               title: 'Neue Datei hochgeladen',
               description: 'Fehler beim Abrufen der Dateidaten aus der Datenbank\n' + error,
-              color: discordWebhookErrorColor,
+              color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
             }
           ],
-          username: discordWebhookName,
+          username: DISCORD_WEBHOOK_NAME,
         };
 
         try {
-          await axios.post(discordWebhookUrl, webhookData);
+          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
         } catch (error) {
           console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -809,19 +817,19 @@ app.get('/view/:filename', async (req, res) => {
             const resolution = fileData.resolution_width + 'x' + fileData.resolution_height;
             const resolutionHTML = fileData.resolution_width !== 0 && fileData.resolution_height !== 0 ? `Auflösung: ${resolution}` : '';
 
-            const isImage = imageFormats.some(format => filename.endsWith(format)) || filename.endsWith('.gif');
-            const isImageWithGif = imageFormats.some(format => filename.endsWith(format));
-            const isAudio = audioFormats.some(format => filename.endsWith(format));
-            const isVideo = videoFormats.some(format => filename.endsWith(format));
+            const isImage = IMAGE_FORMATS.some(format => filename.endsWith(format)) || filename.endsWith('.gif');
+            const isImageWithGif = IMAGE_FORMATS.some(format => filename.endsWith(format));
+            const isAudio = AUDIO_FORMATS.some(format => filename.endsWith(format));
+            const isVideo = VIDEO_FORMATS.some(format => filename.endsWith(format));
 
 
             let metaTag = '';
 
             if (isImage) {
-              metaTag = `<meta property="og:image" content="${baseUrl}/uploads/${username}/${filename}" />
+              metaTag = `<meta property="og:image" content="${BASE_URL}/uploads/${username}/${filename}" />
           <meta property="og:type" content="image.other"/>
-          <meta property="og:image" content="${baseUrl}/uploads/${username}/${filename}" />
-          <meta property="og:image:secure_url" content="${baseUrl}/uploads/${username}/${filename}" />
+          <meta property="og:image" content="${BASE_URL}/uploads/${username}/${filename}" />
+          <meta property="og:image:secure_url" content="${BASE_URL}/uploads/${username}/${filename}" />
           <meta property="og:image:type" content="image.other" />
           <meta property="og:image:alt" content="BILD" />
           <meta property="og:image:width" content="${fileData.resolution_width}" />
@@ -829,25 +837,25 @@ app.get('/view/:filename', async (req, res) => {
           <meta name="twitter:card" content="summary_large_image">`;
 
             } else if (isVideo) {
-              metaTag = `<meta property="og:video" content="${baseUrl}/uploads/${username}/${filename}" />
-          <meta property="og:video:secure_url" content="${baseUrl}/uploads/${username}/${filename}" />
+              metaTag = `<meta property="og:video" content="${BASE_URL}/uploads/${username}/${filename}" />
+          <meta property="og:video:secure_url" content="${BASE_URL}/uploads/${username}/${filename}" />
           <meta property="og:type" content="video.other"/>
           <meta property="og:video:width" content="${fileData.resolution_width}" />
           <meta property="og:video:height" content="${fileData.resolution_height}" />`;
             } else if (isAudio) {
-              metaTag = `<meta property="og:audio" content="${baseUrl}/uploads/${username}/${filename}" />
-          <meta property="og:audio:secure_url" content="${baseUrl}/uploads/${username}/${filename}" />
+              metaTag = `<meta property="og:audio" content="${BASE_URL}/uploads/${username}/${filename}" />
+          <meta property="og:audio:secure_url" content="${BASE_URL}/uploads/${username}/${filename}" />
           <meta property="og:audio:type" content="audio.other" />`;
 
             }
 
             let themeColor = '#ffffff';
 
-            if (themecolor.includes('&dominantColor')) {
+            if (THEME_COLOR.includes('&dominantColor')) {
               const dominantColor = fileData ? fileData.dominant_color : null;
               themeColor = dominantColor;
             } else {
-              themeColor = themecolor;
+              themeColor = THEME_COLOR;
             }
 
             if (isImageWithGif) {
@@ -864,24 +872,24 @@ app.get('/view/:filename', async (req, res) => {
                       {
                         title: 'Neue Datei hochgeladen',
                         description: 'Fehler beim Abrufen der Dateidaten aus der Datenbank\n' + error,
-                        color: discordWebhookErrorColor,
+                        color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
                       }
                     ],
-                    username: discordWebhookName,
+                    username: DISCORD_WEBHOOK_NAME,
                   };
 
                   try {
-                    await axios.post(discordWebhookUrl, webhookData);
+                    await axios.post(DISCORD_WEBHOOK_URL, webhookData);
                     console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
                   } catch (error) {
                     console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
                   }
 
-                  const cssCode = `box-shadow: 0px 60px 100px 0px ${boxshadowcolor}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
+                  const cssCode = `box-shadow: 0px 60px 100px 0px #${BOX_SHADOW_COLOR}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
                   sendHtmlResponse(cssCode);
                 });
             } else {
-              const cssCode = `box-shadow: 0px 60px 100px 0px ${boxshadowcolor}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
+              const cssCode = `box-shadow: 0px 60px 100px 0px #${BOX_SHADOW_COLOR}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
               sendHtmlResponse(cssCode);
             }
 
@@ -889,13 +897,13 @@ app.get('/view/:filename', async (req, res) => {
               const htmlResponse = `          
       <html>
         <head>
-          <title>${sitetitle}</title>
+          <title>${SITE_TITLE}</title>
           ${metaTag}
-          <meta property="og:title" content="${ogtitle}">
-          <meta property="og:description" content="${ogdescription}">
+          <meta property="og:title" content="${OG_TITLE}">
+          <meta property="og:description" content="${OG_DESCRIPTION}">
           <meta name="theme-color" content="${themeColor}">
-          <link rel="icon" href="${sitefavicon}" type="image/png" />
-          <link href="${baseUrl}/oembed/${filename}" title="oEmbed" rel="alternate" type="application/json+oembed" />
+          <link rel="icon" href="${SITE_FAVICON}" type="image/png" />
+          <link href="${BASE_URL}/oembed/${filename}" title="oEmbed" rel="alternate" type="application/json+oembed" />
           <style>
           body {
             display: flex;
@@ -1041,7 +1049,7 @@ app.get('/view/:filename', async (req, res) => {
                       ? `<img src="/uploads/${username}/${filename}" alt="GIF" />`
                       : (fs.existsSync(previewPath)
                         ? `<img src="/uploads/${username}/preview/${filename}" alt="Preview" />`
-                        : `<img src="${baseUrl}/assets/file.png" alt="Datei" />`
+                        : `<img src="${BASE_URL}/assets/file.png" alt="Datei" />`
                       )
                 }
           </div>
@@ -1056,7 +1064,7 @@ app.get('/view/:filename', async (req, res) => {
             ${resolutionHTML}
           </div>
           <div class="copyright">
-            ${copyright}
+            ${COPYRIGHT_TEXT}
           </div>
         </body>
       </html>`;
@@ -1089,9 +1097,9 @@ app.get('/oembed/:filename', async (req, res) => {
         return res.status(404).send(notFoundPage);
       }
 
-      const isImage = imageFormats.some(format => filename.endsWith(format));
-      const isAudio = audioFormats.some(format => filename.endsWith(format));
-      const isVideo = videoFormats.some(format => filename.endsWith(format));
+      const isImage = IMAGE_FORMATS.some(format => filename.endsWith(format));
+      const isAudio = AUDIO_FORMATS.some(format => filename.endsWith(format));
+      const isVideo = VIDEO_FORMATS.some(format => filename.endsWith(format));
 
       let type = 'file';
       if (isImage) {
@@ -1106,14 +1114,14 @@ app.get('/oembed/:filename', async (req, res) => {
         type,
         version: '1.0',
         title: filename,
-        author_url: author_url,
-        author_name: author_name,
-        url: `${baseUrl}/view/${filename}`,
+        author_url: AUTHOR_URL,
+        author_name: AUTHOR_NAME,
+        url: `${BASE_URL}/view/${filename}`,
         width: fileData.resolution_width,
         height: fileData.resolution_height,
-        provider_name: provider_name,
-        provider_url: provider_url,
-        html: `<iframe src="${baseUrl}/uploads/${username}/${filename}" width="500" height="500" frameborder="0"></iframe>`
+        provider_name: PROVIDER_NAME,
+        provider_url: PROVIDER_URL,
+        html: `<iframe src="${BASE_URL}/uploads/${username}/${filename}" width="500" height="500" frameborder="0"></iframe>`
       };
 
       res.json(oembedResponse);
@@ -1165,14 +1173,14 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
             {
               title: 'Ein Nutzer wurde gelöscht',
               description: '\n' + error,
-              color: discordWebhookErrorColor,
+              color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
             }
           ],
-          username: discordWebhookName,
+          username: DISCORD_WEBHOOK_NAME,
         };
 
         try {
-          await axios.post(discordWebhookUrl, webhookData);
+          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
         } catch (error) {
           console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1196,14 +1204,14 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
                 {
                   title: 'Ein Nutzer wurde gelöscht',
                   description: '\n' + error,
-                  color: discordWebhookErrorColor,
+                  color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
                 }
               ],
-              username: discordWebhookName,
+              username: DISCORD_WEBHOOK_NAME,
             };
 
             try {
-              await axios.post(discordWebhookUrl, webhookData);
+              await axios.post(DISCORD_WEBHOOK_URL, webhookData);
               console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
             } catch (error) {
               console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1217,14 +1225,14 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
                 {
                   title: 'Ein Nutzer wurde gelöscht',
                   description: 'Der Nutzer ' + username + ' wurde erfolgreich gelöscht.',
-                  color: discordWebhookSuccessColor,
+                  color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
                 }
               ],
-              username: discordWebhookName,
+              username: DISCORD_WEBHOOK_NAME,
             };
 
             try {
-              await axios.post(discordWebhookUrl, webhookData);
+              await axios.post(DISCORD_WEBHOOK_URL, webhookData);
               console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
             } catch (error) {
               console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1241,14 +1249,14 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
         {
           title: 'Ein Nutzer löschen',
           description: '\n' + error,
-          color: discordWebhookErrorColor,
+          color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1272,14 +1280,14 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
             {
               title: 'Ein Nutzer wurde gelöscht',
               description: '\n' + error,
-              color: discordWebhookErrorColor,
+              color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
             }
           ],
-          username: discordWebhookName,
+          username: DISCORD_WEBHOOK_NAME,
         };
 
         try {
-          await axios.post(discordWebhookUrl, webhookData);
+          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
         } catch (error) {
           console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1303,14 +1311,14 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
                 {
                   title: 'Ein Nutzer wurde gelöscht',
                   description: '\n' + error,
-                  color: discordWebhookErrorColor,
+                  color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
                 }
               ],
-              username: discordWebhookName,
+              username: DISCORD_WEBHOOK_NAME,
             };
 
             try {
-              await axios.post(discordWebhookUrl, webhookData);
+              await axios.post(DISCORD_WEBHOOK_URL, webhookData);
               console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
             } catch (error) {
               console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1324,14 +1332,14 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
                 {
                   title: 'Ein Nutzer wurde gelöscht',
                   description: 'Der Nutzer ' + username + ' wurde erfolgreich gelöscht.',
-                  color: discordWebhookSuccessColor,
+                  color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
                 }
               ],
-              username: discordWebhookName,
+              username: DISCORD_WEBHOOK_NAME,
             };
 
             try {
-              await axios.post(discordWebhookUrl, webhookData);
+              await axios.post(DISCORD_WEBHOOK_URL, webhookData);
               console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
             } catch (error) {
               console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1348,14 +1356,14 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
         {
           title: 'Ein Nutzer löschen',
           description: '\n' + error,
-          color: discordWebhookErrorColor,
+          color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1392,14 +1400,14 @@ const deleteFile = async (username, filename) => {
             {
               title: 'Eine Datei wurde gelöscht',
               description: '\n' + error,
-              color: discordWebhookErrorColor,
+              color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
             }
           ],
-          username: discordWebhookName,
+          username: DISCORD_WEBHOOK_NAME,
         };
 
         try {
-          await axios.post(discordWebhookUrl, webhookData);
+          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
         } catch (error) {
           console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1412,14 +1420,14 @@ const deleteFile = async (username, filename) => {
             {
               title: 'Eine Datei löschen',
               description: 'Der Eintrag wurde erfolgreich aus der Datenbank gelöscht.',
-              color: discordWebhookSuccessColor,
+              color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
             }
           ],
-          username: discordWebhookName,
+          username: DISCORD_WEBHOOK_NAME,
         };
 
         try {
-          await axios.post(discordWebhookUrl, webhookData);
+          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
         } catch (error) {
           console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1439,14 +1447,14 @@ app.delete('/delete-file/:username/:filename', authenticate, isAdmin, async (req
         {
           title: 'Eine Datei wurde gelöscht',
           description: 'Nutzername: **' + req.user.username + '**\nDatei: **' + req.params.filename + '**',
-          color: discordWebhookSuccessColor,
+          color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1458,14 +1466,14 @@ app.delete('/delete-file/:username/:filename', authenticate, isAdmin, async (req
         {
           title: 'Eine Datei löschen',
           description: '\n' + error,
-          color: discordWebhookErrorColor,
+          color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1483,14 +1491,14 @@ app.delete('/delete-file/:filename', authenticate, TokenUsername, async (req, re
         {
           title: 'Eine Datei wurde gelöscht',
           description: 'Nutzername: **' + req.TokenUsername + '**\nDatei: **' + req.params.filename + '**',
-          color: discordWebhookSuccessColor,
+          color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
         }
       ],
-      username: discordWebhookName,
+      username: DISCORD_WEBHOOK_NAME,
     };
 
     try {
-      await axios.post(discordWebhookUrl, webhookData);
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
       console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
@@ -1536,4 +1544,4 @@ app.get('/files', authenticate, TokenUsername, async (req, res) => {
   }
 });
 
-app.listen(port, () => console.log('[INFO] | » Server gestartet auf Port: ' + port));
+app.listen(PORT, () => console.log('[INFO] | » Server gestartet auf Port: ' + PORT));

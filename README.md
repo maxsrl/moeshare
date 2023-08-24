@@ -25,7 +25,7 @@ Du bist ein Developer und siehst hier Fehler oder hast Verbesserungsvorschläge?
 
 ## Installation
 
-Derzeit wird nur die Lokale Installationsmethoden unterstützt. In Zukunft wird aber auch Docker unterstützt.
+Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
 
 ### Lokal
 
@@ -114,15 +114,15 @@ Derzeit wird nur die Lokale Installationsmethoden unterstützt. In Zukunft wird 
     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
    ```
    
-2. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
-2. Bearbeite die `config.js` nach deinen Vorstellunge.
-3. Bearbeite die `docker-compose.yml`, wenn du den Port in der Anwendung geändert hast.
-5. Führe `docker compose build && docker compose up -d && docker compose exec uploader npm run register && docker compose restart` aus, um den ersten Nutzer zu erstellen und um den Uploader zu starten.
+2. Lade dir die [docker-compose.yml] auf dein Server herunter
+2. Bearbeite die `docker-compose.yml` nach deinen Vorstellungen.
+3. Führe `docker compose up -d && docker compose exec uploader npm run register && docker compose restart` aus, um den ersten Nutzer zu erstellen und um den Uploader zu starten.
 
+[docker-compose.yml]: https://raw.githubusercontent.com/MaximilianGT500/Uploader/main/docker-compose.yml
 
 Wie kann ich ein npm-Script ausführen? Nutze dafür `docker compose exec uploader npm run BEFEHL`
 
-Wie kann ich Updaten? Nutze dafür: `git pull && docker compose build --no-cache && docker compose up -d`
+Wie kann ich Updaten? Nutze dafür: `docker compose pull`
 
 </details>
 

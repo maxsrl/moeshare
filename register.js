@@ -1,12 +1,12 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 const readlineSync = require('readline-sync');
-const config = require('./config');
 const jwt = require('jsonwebtoken');
 const fs = require('fs').promises;
 const path = require('path');
 
-const { databaseHost, databasePort, databaseUser, databasePassword, databaseDatabase, jwttoken } = config;
+require('dotenv').config();
+const { JWT_TOKEN, DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE } = process.env
 
 const uploadsFolderPath = path.join(__dirname, 'uploads');
 
@@ -18,11 +18,11 @@ const uploadsFolderPath = path.join(__dirname, 'uploads');
     }
 
     const connection = await mysql.createConnection({
-      host: databaseHost,
-      port: databasePort,
-      user: databaseUser,
-      password: databasePassword,
-      database: databaseDatabase
+      host: DATABASE_HOST,
+      port: DATABASE_PORT,
+      user: DATABASE_USER,
+      password: DATABASE_PASSWORD,
+      database: DATABASE_DATABASE
     });
 
     const createTableQuery = `
@@ -43,7 +43,7 @@ const uploadsFolderPath = path.join(__dirname, 'uploads');
         username,
         role
       };
-      const token = jwt.sign(payload, jwttoken);
+      const token = jwt.sign(payload, JWT_TOKEN);
       return token;
     };
 
