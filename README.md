@@ -116,7 +116,7 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
    
 2. Lade dir die [docker-compose.yml] auf dein Server herunter
 2. Bearbeite die `docker-compose.yml` nach deinen Vorstellungen.
-3. Führe `docker compose up -d && docker compose exec uploader npm run register && docker compose restart` aus, um den ersten Nutzer zu erstellen und um den Uploader zu starten.
+3. Führe `docker compose up -d datenbank && docker compose up -d uploader && docker compose exec uploader npm run register && docker compose restart` aus, um den ersten Nutzer zu erstellen und um den Uploader zu starten.
 
 [docker-compose.yml]: https://raw.githubusercontent.com/MaximilianGT500/Uploader/main/docker-compose.yml
 
