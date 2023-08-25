@@ -23,9 +23,9 @@ ENV THEME_COLOR=&dominantColor
 
 ENV DATABASE_HOST=127.0.0.1
 ENV DATABASE_PORT=3306
-ENV DATABASE_USER=uploader
-ENV DATABASE_PASSWORD=8RAcsRYSj75nePoCvzatZeqtaeyd8p7C4EtyWx78d2XwdJqa7c5SLuWqojWuz3yd
-ENV DATABASE_DATABASE=uploader
+ENV DATABASE_USER=postgres
+ENV DATABASE_PASSWORD=postgres
+ENV DATABASE_DATABASE=postgres
 
 ENV AUTHOR_URL=https://example.com
 ENV AUTHOR_NAME=EXAMPLE
@@ -46,4 +46,4 @@ ENV REDIRECT_URL=https://example.com
 
 
 RUN npm install
-CMD npm start
+CMD ["node", "index.js"]

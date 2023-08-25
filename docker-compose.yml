@@ -1,19 +1,24 @@
 version: '3.8'
 services:
   datenbank:
-    image: mariadb:latest
-    container_name: uploader-datenbank
+    image: postgres:15
+    container_name: datenbank
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: 4hbyjRe3CJWmgkNBkCJxfEgLzxNJ6q6npqm6froM5mKmVehg7aq6NKsvWeNh8iJX
-      MYSQL_DATABASE: uploader
-      MYSQL_USER: uploader
-      MYSQL_PASSWORD: 8RAcsRYSj75nePoCvzatZeqtaeyd8p7C4EtyWx78d2XwdJqa7c5SLuWqojWuz3yd
-    volumes:
-      - ./mariadb/data:/var/lib/mysql
-      - ./mariadb:/docker-entrypoint-initdb.d
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DATABASE=postgres
+      - POSTGRES_PORT=5432
     ports:
-      - "3306"
+      - "5432"
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   uploader:
     image: maximiliangt500/uploader
     container_name: uploader
@@ -42,11 +47,11 @@ services:
       - OG_DESCRIPTION=EXAMPLE # Meta-Tag og:description
       - THEME_COLOR=&dominantColor # Meta-Tag theme-color - wenn &dominantColor als themecolor genommen wird, ist das Embed in der Dominanten Farbe der Datei
 
-      - DATABASE_HOST=datenbank # MariaDB - Hostname (Wenn Docker genutzt wird, nicht ändern.)
-      - DATABASE_PORT=3306 # MariaDB - Port (Wenn Docker genutzt wird, nicht ändern.)
-      - DATABASE_USER=uploader # MariaDB - Datenbank Nutzer (Wenn Docker genutzt wird, nicht ändern.)
-      - DATABASE_PASSWORD=8RAcsRYSj75nePoCvzatZeqtaeyd8p7C4EtyWx78d2XwdJqa7c5SLuWqojWuz3yd # MariaDB - Datenbank Passwort (Wenn Docker genutzt wird, nicht ändern.)
-      - DATABASE_DATABASE=uploader # MariaDB - Datenbank (Wenn Docker genutzt wird, nicht ändern.)
+      - DATABASE_HOST=datenbank # Postgres - Hostname (Wenn Docker genutzt wird, nicht ändern.)
+      - DATABASE_PORT=5432 # Postgres - Port (Wenn Docker genutzt wird, nicht ändern.)
+      - DATABASE_USER=postgres # Postgres - Datenbank Nutzer (Wenn Docker genutzt wird, nicht ändern.)
+      - DATABASE_PASSWORD=postgres # Postgres - Datenbank Passwort (Wenn Docker genutzt wird, nicht ändern.)
+      - DATABASE_DATABASE=postgres # Postgres - Datenbank (Wenn Docker genutzt wird, nicht ändern.)
 
       - AUTHOR_URL=https://example.com # OEmbed
       - AUTHOR_NAME=EXAMPLE # OEmbed
@@ -67,5 +72,5 @@ services:
       - REDIRECT_URL=https://example.com # Wohin soll man Weitergeleitet werden, wenn man / aufruft?
     #env_file:
     #  - .env # Nenne example.env zu .env um!
-    links:
-      - datenbank
+    depends_on:
+      - 'datenbank'

@@ -9,7 +9,7 @@ const Vibrant = require('node-vibrant');
 const { removeMetadata, base64StringToArrayBuffer } = require('@qoocollections/content-metadata-remover');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-let mysql = require('mysql');
+const { Client } = require('pg');
 
 require('dotenv').config();
 const {BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
@@ -27,45 +27,44 @@ app.get('/', (req, res) => {
   res.status(302).location(REDIRECT_URL).json({});
 });
 
-let connection = mysql.createConnection({
-  host: DATABASE_HOST,
-  port: DATABASE_PORT,
-  user: DATABASE_USER,
-  password: DATABASE_PASSWORD,
-  database: DATABASE_DATABASE,
-  connectTimeout: 30000
-});
-
-connection.connect((error) => {
-  if (error) {
-    console.error('[ERROR] | » Fehler bei der Verbindung zur Datenbank:', error);
-    return;
-  }
-  console.log('[INFO] | » Die Verbindung zur Datenbank wurde erfolgreich hergestellt.');
-});
-
 function parseColor(hexColor) {
   return parseInt(hexColor, 16);
 }
 
-const createTableQuery = `CREATE TABLE IF NOT EXISTS file_data (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(255) NOT NULL,
-  filename VARCHAR(255) NOT NULL,
-  creation_date VARCHAR(255) NOT NULL,
-  size_mb DECIMAL(10, 3) NOT NULL,
-  size_bytes INT NOT NULL,
-  dominant_color VARCHAR(7) NOT NULL,
-  resolution_width INT NOT NULL,
-  resolution_height INT NOT NULL
-)`;
+const pgClient = new Client({
+  user: DATABASE_USER,
+  host: DATABASE_HOST,
+  database: DATABASE_DATABASE,
+  password: DATABASE_PASSWORD,
+  port: DATABASE_PORT
+});
 
-connection.query(createTableQuery, function (error, results, fields) {
-  if (error) {
-    console.error('[ERROR] | » Fehler beim Erstellen der Tabelle "file_data":', error);
-  } else {
-    console.log('[INFO] | » Tabelle "file_data" erfolgreich erstellt oder bereits vorhanden.');
+pgClient.connect((pgError) => {
+  if (pgError) {
+    console.error('[ERROR] | » Fehler bei der Verbindung zur PostgreSQL:', pgError);
+    return;
   }
+  console.log('[INFO] | » Die Verbindung zur PostgreSQL wurde erfolgreich hergestellt.');
+
+  const createTableQuery = `CREATE TABLE IF NOT EXISTS file_data (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    creation_date VARCHAR(255) NOT NULL,
+    size_mb DECIMAL(10, 3) NOT NULL,
+    size_bytes INT NOT NULL,
+    dominant_color VARCHAR(7) NOT NULL,
+    resolution_width INT NOT NULL,
+    resolution_height INT NOT NULL
+  )`;
+
+  pgClient.query(createTableQuery, (error, results) => {
+    if (error) {
+      console.error('[ERROR] | » Fehler beim Erstellen der Tabelle "file_data":', error);
+    } else {
+      console.log('[INFO] | » Tabelle "file_data" erfolgreich erstellt oder bereits vorhanden.');
+    }
+  });
 });
 
 const createDirectoriesForAllUsers = async () => {
@@ -123,11 +122,11 @@ const createDirectoriesForAllUsers = async () => {
 
 const getAllUsers = () => {
   return new Promise((resolve, reject) => {
-    connection.query('SELECT username FROM users', (error, results, fields) => {
+    pgClient.query('SELECT username FROM users', (error, results) => {
       if (error) {
         reject(error);
       } else {
-        resolve(results);
+        resolve(results.rows);
       }
     });
   });
@@ -165,11 +164,14 @@ const upload = multer({
 
 const getUserByUsername = (username) => {
   return new Promise((resolve, reject) => {
-    connection.query('SELECT * FROM users WHERE username = ?', [username], (error, results, fields) => {
+    const query = 'SELECT * FROM users WHERE username = $1';
+    const values = [username];
+
+    pgClient.query(query, values, (error, results) => {
       if (error) {
         reject(error);
       } else {
-        const user = results[0];
+        const user = results.rows[0];
         resolve(user);
       }
     });
@@ -184,8 +186,9 @@ const generateToken = async (user) => {
 
   const token = jwt.sign(payload, JWT_TOKEN);
 
-  const updateUserQuery = 'UPDATE users SET token = ? WHERE id = ?';
-  connection.query(updateUserQuery, [token, user.id], function (error, results, fields) {
+  const updateUserQuery = 'UPDATE users SET token = $1 WHERE id = $2';
+  const updateValues = [token, user.id];
+  pgClient.query(updateUserQuery, updateValues, (error) => {
     if (error) throw error;
   });
 
@@ -194,15 +197,15 @@ const generateToken = async (user) => {
 
 const getUserByToken = (token) => {
   return new Promise((resolve, reject) => {
-    const query = 'SELECT * FROM users WHERE token = ?';
+    const query = 'SELECT * FROM users WHERE token = $1';
     const values = [token];
 
-    connection.query(query, values, function (error, results, fields) {
+    pgClient.query(query, values, (error, results) => {
       if (error) {
         console.error('[ERROR] | » Fehler beim Abrufen des Benutzers aus der Datenbank:', error);
         reject(error);
       } else {
-        const user = results[0];
+        const user = results.rows[0];
         resolve(user);
       }
     });
@@ -276,9 +279,7 @@ app.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Ungültiger Benutzername oder Passwort!' });
     }
 
-    const token = await generateToken(user);
-
-    res.json({ token, role: user.role });
+    res.json({ token: user.token, role: user.role });
   } catch (error) {
     console.error('[ERROR] | » Fehler bei der Anmeldung:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
@@ -562,16 +563,16 @@ if (USE_DOMINANT_COLOR === true) {
   }
 
   const sizeInBytes = fileStats.size;
-  const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(3);
+  const sizeInMB = parseFloat((sizeInBytes / (1024 * 1024)).toFixed(3));
 
   const saveFileDataToDatabase = async (username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor, resolution) => {
-    const query = 'INSERT INTO file_data (username, filename, creation_date, size_mb, size_bytes, dominant_color, resolution_width, resolution_height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    const query = 'INSERT INTO file_data (username, filename, creation_date, size_mb, size_bytes, dominant_color, resolution_width, resolution_height) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
     const values = [username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor, resolution.width, resolution.height];
-
-
-    connection.query(query, values, async function (error, results, fields) {
+  
+    pgClient.query(query, values, async (error, results) => {
       if (error) {
         console.error('[ERROR] | » Fehler beim Speichern der Dateidaten in die Datenbank:', error);
+  
         const webhookData = {
           embeds: [
             {
@@ -582,7 +583,7 @@ if (USE_DOMINANT_COLOR === true) {
           ],
           username: DISCORD_WEBHOOK_NAME,
         };
-
+  
         try {
           await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
@@ -591,6 +592,7 @@ if (USE_DOMINANT_COLOR === true) {
         }
       } else {
         console.log('[INFO] | » Dateidaten erfolgreich in die Datenbank gespeichert.');
+  
         const webhookData = {
           embeds: [
             {
@@ -601,7 +603,7 @@ if (USE_DOMINANT_COLOR === true) {
           ],
           username: DISCORD_WEBHOOK_NAME,
         };
-
+  
         try {
           await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
@@ -617,7 +619,7 @@ if (USE_DOMINANT_COLOR === true) {
     embeds: [
       {
         title: 'Neue Datei hochgeladen',
-        description: 'Dateiname: **' + filename + '**\nBenutzername: **' + req.user.username + '**\nGröße: **' + sizeInMB + 'MB**\nAuflösung: **' + resolution.width + 'x' + resolution.height + '**\nHauptfarbe: **' + dominantColor + '**',
+        description: 'Dateiname: **' + filename + `**\nURL: **${BASE_URL}/view/${filename}` + '**\nBenutzername: **' + req.user.username + '**\nGröße: **' + sizeInMB + 'MB**\nAuflösung: **' + resolution.width + 'x' + resolution.height + '**\nHauptfarbe: **' + dominantColor + '**',
         color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
       }
     ],
@@ -717,12 +719,13 @@ const removeMetadataFromImage = async (filePath) => {
 
 const getFileDataFromDatabase = async (username, filename) => {
   return new Promise(async (resolve, reject) => {
-    const query = 'SELECT * FROM file_data WHERE username = ? AND filename = ?';
+    const query = 'SELECT * FROM file_data WHERE username = $1 AND filename = $2';
     const values = [username, filename];
 
-    connection.query(query, values, async function (error, results, fields) {
+    pgClient.query(query, values, async (error, results) => {
       if (error) {
         console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
+
         const webhookData = {
           embeds: [
             {
@@ -742,8 +745,8 @@ const getFileDataFromDatabase = async (username, filename) => {
         }
         reject(error);
       } else {
-        if (results.length > 0) {
-          resolve(results[0]);
+        if (results.rows.length > 0) {
+          resolve(results.rows[0]);
         } else {
           resolve(null);
         }
@@ -754,16 +757,16 @@ const getFileDataFromDatabase = async (username, filename) => {
 
 const getFileByFilename = async (filename) => {
   return new Promise(async (resolve, reject) => {
-    const query = 'SELECT * FROM file_data WHERE filename = ?';
+    const query = 'SELECT * FROM file_data WHERE filename = $1';
     const values = [filename];
 
-    connection.query(query, values, async function (error, results, fields) {
+    pgClient.query(query, values, async (error, results) => {
       if (error) {
         console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
         reject(error);
       } else {
-        if (results.length > 0) {
-          resolve(results[0]);
+        if (results.rows.length > 0) {
+          resolve(results.rows[0]);
         } else {
           resolve(null);
         }
@@ -803,7 +806,7 @@ app.get('/view/:filename', async (req, res) => {
               return res.status(404).send({ error: 'Keine Dateiinformationen in der Datenbank gefunden!' });
             }
 
-            const sizeInMB = fileData.size_mb.toFixed(3);
+            const sizeInMB = fileData.size_mb
             const creationDate = fileData.creation_date.toLocaleString('de-DE', {
               day: '2-digit',
               month: '2-digit',
@@ -1121,7 +1124,7 @@ app.get('/oembed/:filename', async (req, res) => {
         height: fileData.resolution_height,
         provider_name: PROVIDER_NAME,
         provider_url: PROVIDER_URL,
-        html: `<iframe src="${BASE_URL}/uploads/${username}/${filename}" width="500" height="500" frameborder="0"></iframe>`
+        html: `<iframe src="${BASE_URL}/uploads/${username}/${filename}" width="${fileData.resolution_width}" height="${fileData.resolution_height}" frameborder="0"></iframe>`
       };
 
       res.json(oembedResponse);
@@ -1162,88 +1165,56 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
   const username = req.params.username;
 
   try {
-    const deleteQuery = 'DELETE FROM users WHERE username = ?';
+    const checkUserQuery = 'SELECT * FROM users WHERE username = $1';
+    const checkUserValues = [username];
+
+    const userCheckResult = await pgClient.query(checkUserQuery, checkUserValues);
+
+    if (userCheckResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Benutzer nicht gefunden' });
+    }
+
+    const deleteQuery = 'DELETE FROM users WHERE username = $1';
     const deleteValues = [username];
 
-    connection.query(deleteQuery, deleteValues, async function (error, results, fields) {
-      if (error) {
-        console.error('[ERROR] | » Fehler beim Löschen des Nutzers aus der Datenbank:', error);
-        const webhookData = {
-          embeds: [
-            {
-              title: 'Ein Nutzer wurde gelöscht',
-              description: '\n' + error,
-              color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
-            }
-          ],
-          username: DISCORD_WEBHOOK_NAME,
-        };
+    await pgClient.query(deleteQuery, deleteValues);
 
-        try {
-          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-          console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-        } catch (error) {
-          console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    console.log('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.');
+
+    const userFolderPath = path.join(__dirname, 'uploads', username);
+    if (fs.existsSync(userFolderPath)) {
+      fs.rmdirSync(userFolderPath, { recursive: true });
+      console.log('[INFO] | » Nutzerordner erfolgreich gelöscht.');
+    }
+
+    const deleteFilesQuery = 'DELETE FROM file_data WHERE username = $1';
+    await pgClient.query(deleteFilesQuery, deleteValues);
+
+    console.log('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.');
+
+    const webhookData = {
+      embeds: [
+        {
+          title: 'Ein Nutzer wurde gelöscht',
+          description: 'Nutzername: **' + req.user.username,
+          color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
         }
-        res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
-      } else {
-        console.log('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.');
+      ],
+      username: DISCORD_WEBHOOK_NAME,
+    };
 
-        const userFolderPath = path.join(__dirname, 'uploads', username);
-        if (fs.existsSync(userFolderPath)) {
-          fs.rmdirSync(userFolderPath, { recursive: true });
-          console.log('[INFO] | » Nutzerordner erfolgreich gelöscht.');
-        }
+    try {
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
+    } catch (error) {
+      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    }
 
-        const deleteFilesQuery = 'DELETE FROM file_data WHERE username = ?';
-        connection.query(deleteFilesQuery, deleteValues, async function (error, results, fields) {
-          if (error) {
-            console.error('[ERROR] | » Fehler beim Löschen der Dateieinträge aus der Datenbank:', error);
-            const webhookData = {
-              embeds: [
-                {
-                  title: 'Ein Nutzer wurde gelöscht',
-                  description: '\n' + error,
-                  color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
-                }
-              ],
-              username: DISCORD_WEBHOOK_NAME,
-            };
+    res.json({ success: true, message: 'Nutzer erfolgreich gelöscht' });
 
-            try {
-              await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-              console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-            } catch (error) {
-              console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
-            }
-            res.status(500).json({ error: 'Fehler beim Löschen der Dateieinträge' });
-          } else {
-            console.log('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.');
-
-            const webhookData = {
-              embeds: [
-                {
-                  title: 'Ein Nutzer wurde gelöscht',
-                  description: 'Der Nutzer ' + username + ' wurde erfolgreich gelöscht.',
-                  color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
-                }
-              ],
-              username: DISCORD_WEBHOOK_NAME,
-            };
-
-            try {
-              await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-              console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-            } catch (error) {
-              console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
-            }
-            res.json({ success: true, message: 'Nutzer erfolgreich gelöscht' });
-          }
-        });
-      }
-    });
   } catch (error) {
     console.error('[ERROR] | » Fehler beim Löschen des Nutzers:', error);
+
     const webhookData = {
       embeds: [
         {
@@ -1261,6 +1232,7 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
     } catch (error) {
       console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
     }
+
     res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
   }
 });
@@ -1269,12 +1241,13 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
   const username = req.TokenUsername;
 
   try {
-    const deleteQuery = 'DELETE FROM users WHERE username = ?';
+    const deleteQuery = 'DELETE FROM users WHERE username = $1';
     const deleteValues = [username];
 
-    connection.query(deleteQuery, deleteValues, async function (error, results, fields) {
+    pgClient.query(deleteQuery, deleteValues, async (error, results) => {
       if (error) {
         console.error('[ERROR] | » Fehler beim Löschen des Nutzers aus der Datenbank:', error);
+
         const webhookData = {
           embeds: [
             {
@@ -1292,6 +1265,7 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
         } catch (error) {
           console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
         }
+
         res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
       } else {
         console.log('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.');
@@ -1302,8 +1276,8 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
           console.log('[INFO] | » Nutzerordner erfolgreich gelöscht.');
         }
 
-        const deleteFilesQuery = 'DELETE FROM file_data WHERE username = ?';
-        connection.query(deleteFilesQuery, deleteValues, async function (error, results, fields) {
+        const deleteFilesQuery = 'DELETE FROM file_data WHERE username = $1';
+        pgClient.query(deleteFilesQuery, deleteValues, async (error) => {
           if (error) {
             console.error('[ERROR] | » Fehler beim Löschen der Dateieinträge aus der Datenbank:', error);
             const webhookData = {
@@ -1388,11 +1362,11 @@ const deleteFile = async (username, filename) => {
     fs.unlinkSync(previewPath);
   }
 
-  const deleteQuery = 'DELETE FROM file_data WHERE username = ? AND filename = ?';
+  const deleteQuery = 'DELETE FROM file_data WHERE username = $1 AND filename = $2';
   const deleteValues = [username, filename];
 
   return new Promise(async (resolve, reject) => {
-    connection.query(deleteQuery, deleteValues, async function (error, results, fields) {
+    pgClient.query(deleteQuery, deleteValues, async (error) => {
       if (error) {
         console.error('[ERROR] | » Fehler beim Löschen des Eintrags aus der Datenbank:', error);
         const webhookData = {
@@ -1418,7 +1392,7 @@ const deleteFile = async (username, filename) => {
         const webhookData = {
           embeds: [
             {
-              title: 'Eine Datei löschen',
+              title: 'Eine Datei wurde gelöscht',
               description: 'Der Eintrag wurde erfolgreich aus der Datenbank gelöscht.',
               color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
             }
