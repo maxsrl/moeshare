@@ -1,8 +1,8 @@
 # Uploader
 ⚠️ Dies ist noch eine frühe und aktive Entwicklung. Es kann zu Fehlern kommen.
+🛑 Die MariaDB-Version ist veraltet. Update den Uploader nichtmehr, wenn du MariaDB nutzten möchtest. Lade alle Dateien herunter und lade sie wieder hoch, wenn du auf einer neuen Version updaten möchtest.
 
-
-Dies ist ein einfacher ShareX-Uploader, der auf Node.js und MariaDB basiert. Der Uploader ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
+Dies ist ein einfacher ShareX-Uploader, der auf Node.js und Postgres basiert. Der Uploader ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
 
 ## Developer
 Du bist ein Developer und siehst hier Fehler oder hast Verbesserungsvorschläge? Zögere nicht ein Issue zu öffnen bzw. eine Pull Request.
