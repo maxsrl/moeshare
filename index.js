@@ -18,6 +18,7 @@ const VIDEO_FORMATS = process.env.VIDEO_FORMATS.split(',');
 const IMAGE_FORMATS = process.env.IMAGE_FORMATS.split(',');
 const USE_DOMINANT_COLOR = process.env.USE_DOMINANT_COLOR === 'true';
 const REMOVE_METADATA = process.env.REMOVE_METADATA === 'true';
+const USE_PREVIEW = process.env.USE_PREVIEW === 'true';
 
 const app = express();
 app.use(express.json());
@@ -75,7 +76,7 @@ const createDirectoriesForAllUsers = async () => {
     users.forEach(user => {
       const uploadPath = path.join(__dirname, 'uploads', user.username);
       fs.mkdirSync(uploadPath, { recursive: true });
-
+    
       const userPreviewPath = path.join(uploadPath, 'preview');
       fs.mkdirSync(userPreviewPath, { recursive: true });
     });
@@ -177,23 +178,6 @@ const getUserByUsername = (username) => {
       }
     });
   });
-};
-
-const generateToken = async (user) => {
-  const payload = {
-    id: user.id,
-    username: user.username,
-  };
-
-  const token = jwt.sign(payload, JWT_TOKEN);
-
-  const updateUserQuery = 'UPDATE users SET token = $1 WHERE id = $2';
-  const updateValues = [token, user.id];
-  pgClient.query(updateUserQuery, updateValues, (error) => {
-    if (error) throw error;
-  });
-
-  return token;
 };
 
 const getUserByToken = (token) => {
@@ -443,26 +427,26 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
   const filePath = path.join(userUploadsPath, filename);
   const previewPath = path.join(userUploadsPath, 'preview', filename);
 
-  if (IMAGE_FORMATS.some(format => filename.endsWith(format))) {
+  if (USE_PREVIEW && IMAGE_FORMATS.some(format => filename.endsWith(format))) {
     await sharp(filePath)
       .webp({ quality: 50 })
       .toFile(previewPath);
   }
 
   if (REMOVE_METADATA) {
-  await removeMetadataFromImage(filePath);
+    await removeMetadataFromImage(filePath);
   } else {
     console.log('[INFO] | » Metadatenentfernung deaktiviert.');
   }
 
   res.json({
     success: true,
-    file: `${BASE_URL}/uploads/${req.TokenUsername}/${filename}`,
-    view: `${BASE_URL}/view/${filename}`,
-    preview: IMAGE_FORMATS.some(format => filename.endsWith(format))
-      ? `${BASE_URL}/uploads/${req.TokenUsername}/preview/${filename}`
-      : `${BASE_URL}/uploads/${req.TokenUsername}/${filename}`,
-    delete: `${BASE_URL}/delete/${filename}`,
+    file: `${process.env.BASE_URL}/uploads/${req.TokenUsername}/${filename}`,
+    view: `${process.env.BASE_URL}/view/${filename}`,
+    preview: (USE_PREVIEW && IMAGE_FORMATS.some(format => filename.endsWith(format)))
+      ? `${process.env.BASE_URL}/uploads/${req.TokenUsername}/preview/${filename}`
+      : `${process.env.BASE_URL}/uploads/${req.TokenUsername}/${filename}`,
+    delete: `${process.env.BASE_URL}/delete/${filename}`,
   });
 
   const imagePath = `./uploads/${req.TokenUsername}/${filename}`;
@@ -1045,22 +1029,26 @@ app.get('/view/:filename', async (req, res) => {
         <body>
           <h1 class="filename">${filename}</h1><br>
           <div class="file-container">
-            ${isAudio
-                  ? `<audio controls>
-                  <source src="/uploads/${username}/${filename}">
-                </audio>`
-                  : (isVideo)
-                    ? `<video controls>
-                    <source src="/uploads/${username}/${filename}">
-                  </video>`
-                    : (filename.endsWith('.gif'))
-                      ? `<img src="/uploads/${username}/${filename}" alt="GIF" />`
-                      : (fs.existsSync(previewPath)
-                        ? `<img src="/uploads/${username}/preview/${filename}" alt="Preview" />`
-                        : `<img src="${BASE_URL}/assets/file.png" alt="Datei" />`
-                      )
-                }
-          </div>
+          ${
+            isAudio
+            ? `<audio controls>
+                <source src="/uploads/${username}/${filename}">
+              </audio>`
+            : isVideo
+            ? `<video controls>
+                <source src="/uploads/${username}/${filename}">
+              </video>`
+            : filename.endsWith('.gif')
+            ? `<img src="/uploads/${username}/${filename}" alt="GIF" />`
+            : isImage
+            ? USE_PREVIEW
+              ? `<img src="/uploads/${username}/preview/${filename}" alt="Bild Preview" />`
+              : `<img src="/uploads/${username}/${filename}" alt="Bild" />`
+            : fs.existsSync(previewPath)
+            ? `<img src="/uploads/${username}/preview/${filename}" alt="Preview" />`
+            : `<img src="${BASE_URL}/assets/file.png" alt="Datei" />`
+          }
+        </div>
           <div class="button-container">
             <button class="button" type="button" onclick="window.open('/download/${filename}')">Herunterladen</button>
             <button class="button" type="button" onclick="window.location.href = '/uploads/${username}/${filename}';">Direct Link</button>

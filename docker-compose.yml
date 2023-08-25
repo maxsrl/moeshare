@@ -41,6 +41,7 @@ services:
       - PORT=3000 # Port der Anwendung
       - JWT_TOKEN=CHANGEME # Zufälliger Token
       - REMOVE_METADATA=true # Sollen Metadaten, wie der Standort entfernt werden nach dem Upload? (Dies verringert die Leistung.)
+      - USE_PREVIEW=true # Soll ein Preview Bild erstellt werden?
 
       - SITE_TITLE=EXAMPLE # Meta-Tag title
       - SITE_FAVICON=/assets/favicon.png # Path zur .png-Datei oder zu einer .png-URL
