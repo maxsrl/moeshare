@@ -20,9 +20,7 @@ services:
       retries: 5
 
   uploader:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: maximiliangt500/uploader
     container_name: uploader
     restart: unless-stopped
     ports:
