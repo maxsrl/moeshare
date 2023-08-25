@@ -7,42 +7,36 @@ RUN mkdir -p /opt/uploader/uploads/ && \
     mkdir -p /opt/uploader/public/assets/ && \
     touch /opt/uploader/.env
 	
-ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac
-ENV VIDEO_FORMATS=.mp4,.avi,.mkv,.mov,.wmv
-ENV IMAGE_FORMATS=.jpg,.jpeg,.png,.bmp,.svg,.webp,.tiff
-
-ENV BASE_URL=http://localhost:3000
-ENV PORT=3000
-ENV JWT_TOKEN=CHANGEME
-
-ENV SITE_TITLE=EXAMPLE
-ENV SITE_FAVICON=/assets/favicon.png
-ENV OG_TITLE=EXAMPLE
-ENV OG_DESCRIPTION=EXAMPLE
-ENV THEME_COLOR=&dominantColor
-
-ENV DATABASE_HOST=127.0.0.1
-ENV DATABASE_PORT=5432
-ENV DATABASE_USER=postgres
-ENV DATABASE_PASSWORD=postgres
-ENV DATABASE_DATABASE=postgres
-
-ENV AUTHOR_URL=https://example.com
-ENV AUTHOR_NAME=EXAMPLE
-ENV PROVIDER_NAME=EXAMPLE.COM
-ENV PROVIDER_URL=https://example.com
-
-ENV USE_DOMINANT_COLOR=true
-ENV DOMINANT_COLOR_STATIC=#
-ENV BOX_SHADOW_COLOR=#ffffff
-
-ENV COPYRIGHT_TEXT="&copy; MAX.SRL - All Rights Reserved - <a rel="noreferrer" href="https://max.srl/impressum-datenschutz.html" target="_blank">Impressum & Datenschutz</a> | <a rel="noreferrer" href="https://github.com/MaximilianGT500/uploader" target="_blank">Source Code</a>"
-
-ENV DISCORD_WEBHOOK_NAME=Datei-Uploader
-ENV DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXXX/XXXX
-ENV DISCORD_WEBHOOK_SUCCESS_COLOR=0x03fc28
-ENV DISCORD_WEBHOOK_ERROR_COLOR=0xfc0303
-ENV REDIRECT_URL=https://example.com
+ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
+    VIDEO_FORMATS=.mp4,.avi,.mkv,.mov,.wmv \
+    IMAGE_FORMATS=.jpg,.jpeg,.png,.bmp,.svg,.webp,.tiff \
+    BASE_URL=http://localhost:3000 \
+    PORT=3000 \
+    JWT_TOKEN=CHANGEME \
+    REMOVE_METADATA=true \
+    SITE_TITLE=EXAMPLE \
+    SITE_FAVICON=/assets/favicon.png \
+    OG_TITLE=EXAMPLE \
+    OG_DESCRIPTION=EXAMPLE \
+    THEME_COLOR=&dominantColor \
+    DATABASE_HOST=127.0.0.1 \
+    DATABASE_PORT=5432 \
+    DATABASE_USER=postgres \
+    DATABASE_PASSWORD=postgres \
+    DATABASE_DATABASE=postgres \
+    AUTHOR_URL=https://example.com \
+    AUTHOR_NAME=EXAMPLE \
+    PROVIDER_NAME=EXAMPLE.COM \
+    PROVIDER_URL=https://example.com \
+    USE_DOMINANT_COLOR=true \
+    DOMINANT_COLOR_STATIC=# \
+    BOX_SHADOW_COLOR=#ffffff \
+    COPYRIGHT_TEXT="&copy; MAX.SRL - All Rights Reserved - <a rel="noreferrer" href="https://max.srl/impressum-datenschutz.html" target="_blank">Impressum & Datenschutz</a> | <a rel="noreferrer" href="https://github.com/MaximilianGT500/uploader" target="_blank">Source Code</a>" \
+    DISCORD_WEBHOOK_NAME=Datei-Uploader \
+    DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXXX/XXXX \
+    DISCORD_WEBHOOK_SUCCESS_COLOR=0x03fc28 \
+    DISCORD_WEBHOOK_ERROR_COLOR=0xfc0303 \
+    REDIRECT_URL=https://example.com
 
 
 RUN npm install

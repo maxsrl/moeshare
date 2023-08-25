@@ -17,6 +17,7 @@ const AUDIO_FORMATS = process.env.AUDIO_FORMATS.split(',');
 const VIDEO_FORMATS = process.env.VIDEO_FORMATS.split(',');
 const IMAGE_FORMATS = process.env.IMAGE_FORMATS.split(',');
 const USE_DOMINANT_COLOR = process.env.USE_DOMINANT_COLOR === 'true';
+const REMOVE_METADATA = process.env.REMOVE_METADATA === 'true';
 
 const app = express();
 app.use(express.json());
@@ -448,7 +449,11 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
       .toFile(previewPath);
   }
 
+  if (REMOVE_METADATA) {
   await removeMetadataFromImage(filePath);
+  } else {
+    console.log('[INFO] | » Metadatenentfernung deaktiviert.');
+  }
 
   res.json({
     success: true,
