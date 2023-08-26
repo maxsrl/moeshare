@@ -149,7 +149,7 @@ Die Datei `config.sxcu` kann auch geändert und importiert werden, für ein schn
    - Body: `Formulardaten (multipart/form-data)`
    - File form name: `file` (wörtlich "file" in das Feld eingeben)
    - Headers:
-      - Name: `Autorisierung`
+      - Name: `Authorization`
 	    - Wert: `Dein Token`
    - URL: `{json:view}`
    - Thumbnail URL: `{json:preview}`
