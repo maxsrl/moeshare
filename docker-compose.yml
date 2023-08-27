@@ -10,7 +10,7 @@ services:
       - POSTGRES_DATABASE=postgres
       - POSTGRES_PORT=5432
     ports:
-      - "5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - ./pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -64,7 +64,7 @@ services:
       - DOMINANT_COLOR_STATIC=#ffffff # Diese Farbe wird anstelle der Dominanten Farbe genutzt. (#HEXCOLOR)
       - BOX_SHADOW_COLOR=#ffffff # Wird Angewand, wenn die Datei kein Bild ist. (#HEXCOLOR)
 
-      - COPYRIGHT_TEXT=&copy; 2023 MAX.SRL - All Rights Reserved - <a rel=noreferrer href=https://max.srl/impressum-datenschutz.html target=_blank>Impressum & Datenschutz</a> | <a rel=noreferrer href=https://github.com/MaximilianGT500/uploader target=_blank>Source Code</a> # Copyright Text
+      - COPYRIGHT_TEXT=&copy; 2023 EXAMPLE - All Rights Reserved # Copyright Text
 
       - DISCORD_WEBHOOK_NAME=Datei-Uploader # Dies ist der Name der Webhook
       - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXXX/XXXX # Für Discord-Webhook logging

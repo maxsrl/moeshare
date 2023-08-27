@@ -32,7 +32,7 @@ ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
     USE_DOMINANT_COLOR=true \
     DOMINANT_COLOR_STATIC=# \
     BOX_SHADOW_COLOR=#ffffff \
-    COPYRIGHT_TEXT="&copy; MAX.SRL - All Rights Reserved - <a rel="noreferrer" href="https://max.srl/impressum-datenschutz.html" target="_blank">Impressum & Datenschutz</a> | <a rel="noreferrer" href="https://github.com/MaximilianGT500/uploader" target="_blank">Source Code</a>" \
+    COPYRIGHT_TEXT="&copy; 2023 EXAMPLE - All Rights Reserved" \
     DISCORD_WEBHOOK_NAME=Datei-Uploader \
     DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXXX/XXXX \
     DISCORD_WEBHOOK_SUCCESS_COLOR=0x03fc28 \
