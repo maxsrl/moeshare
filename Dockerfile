@@ -15,6 +15,7 @@ ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
     JWT_TOKEN=CHANGEME \
     REMOVE_METADATA=true \
     USE_PREVIEW=true \
+    LOGS=true \
     SITE_TITLE=EXAMPLE \
     SITE_FAVICON=/assets/favicon.png \
     OG_TITLE=EXAMPLE \

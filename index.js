@@ -10,6 +10,11 @@ const { removeMetadata, base64StringToArrayBuffer } = require('@qoocollections/c
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const { Client } = require('pg');
+const { DateTime } = require('luxon');
+const now = DateTime.now().setZone('Europe/Berlin');
+const currentHour = now.hour;
+const os = require('os');
+const clc = require('cli-color');
 
 require('dotenv').config();
 const {BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
@@ -43,10 +48,10 @@ const pgClient = new Client({
 
 pgClient.connect((pgError) => {
   if (pgError) {
-    console.error('[ERROR] | » Fehler bei der Verbindung zur PostgreSQL:', pgError);
+    console.error(clc.red('[ERROR] | » Fehler bei der Verbindung zur PostgreSQL:', pgError));
     return;
   }
-  console.log('[INFO] | » Die Verbindung zur PostgreSQL wurde erfolgreich hergestellt.');
+  console.log(clc.green('[INFO] | » Die Verbindung zur PostgreSQL wurde erfolgreich hergestellt.'));
 
   const createTableQuery = `CREATE TABLE IF NOT EXISTS file_data (
     id SERIAL PRIMARY KEY,
@@ -62,12 +67,88 @@ pgClient.connect((pgError) => {
 
   pgClient.query(createTableQuery, (error, results) => {
     if (error) {
-      console.error('[ERROR] | » Fehler beim Erstellen der Tabelle "file_data":', error);
+      console.error(clc.red('[ERROR] | » Fehler beim Erstellen der Tabelle "file_data":', error));
     } else {
-      console.log('[INFO] | » Tabelle "file_data" erfolgreich erstellt oder bereits vorhanden.');
+      console.log(clc.green('[INFO] | » Tabelle "file_data" erfolgreich erstellt oder bereits vorhanden.'));
     }
   });
 });
+
+let greeting;
+
+if (currentHour >= 5 && currentHour < 12) {
+    greeting = "Guten Morgen";
+} else if (currentHour >= 12 && currentHour < 18) {
+    greeting = "Guten Tag";
+} else if (currentHour >= 18 && currentHour < 22) {
+    greeting = "Guten Abend";
+} else {
+    greeting = "Gute Nacht";
+}
+
+function getFolderSizeAndFileCount(folderPath) {
+  let folderSizeBytes = 0;
+  let fileCount = 0;
+
+  const calculateSize = (itemPath) => {
+    const stats = fs.statSync(itemPath);
+    if (stats.isFile()) {
+      folderSizeBytes += stats.size;
+      fileCount++;
+    } else if (stats.isDirectory()) {
+      const items = fs.readdirSync(itemPath);
+      items.forEach((item) => {
+        calculateSize(path.join(itemPath, item));
+      });
+    }
+  };
+
+  calculateSize(folderPath);
+
+  return { folderSizeBytes, fileCount };
+}
+
+const folderPath = './uploads';
+const { folderSizeBytes, fileCount } = getFolderSizeAndFileCount(folderPath);
+const folderSizeKb = folderSizeBytes / 1024;
+const folderSizeMb = folderSizeKb / 1024;
+
+const formatMemory = (bytes) => {
+  const megabytes = bytes / (1024 * 1024);
+  return megabytes.toFixed(2);
+};
+
+const freeMemory = os.freemem();
+const totalMemory = os.totalmem();
+const formattedFreeMemory = formatMemory(freeMemory);
+const formattedTotalMemory = formatMemory(totalMemory);
+
+console.log(clc.whiteBright(`\n`))
+console.log(clc.bold.whiteBright(`-----------------------------------------------------------------------------------------------------`))
+console.log(clc.bold.whiteBright(`${greeting}, Nutzer.`))
+console.log(clc.bold.whiteBright(`Vielen Dank, dass du mein Uploader nutzt!\n`))
+console.log(clc.bold.whiteBright(`Hier kannst du die aktuellen Einstellungen sehen:`))
+console.log(clc.whiteBright(`  - Diese Farbe wird anstelle der Dominanten Farbe genutzt: ${DOMINANT_COLOR_STATIC}`))
+console.log(clc.whiteBright(`  - Wird Angewand, wenn die Datei kein Bild ist: ${BOX_SHADOW_COLOR}\n`))
+console.log(clc.whiteBright(`  - Erlaubte Audio-Formate:${AUDIO_FORMATS}`))
+console.log(clc.whiteBright(`  - Erlaubte Video-Formate: ${VIDEO_FORMATS}`))
+console.log(clc.whiteBright(`  - Erlaubte Bilder-Formate: ${IMAGE_FORMATS}\n`))
+console.log(clc.whiteBright(`  - Soll die Dominante Farbe des Bildes genutzt werden? ${USE_DOMINANT_COLOR ? "✅" : "❌"}`))
+console.log(clc.whiteBright(`  - Sollen die Metadaten der Datei gelöscht werden? ${REMOVE_METADATA ? "✅" : "❌"}`))
+console.log(clc.whiteBright(`  - Soll ein Preview erstellt und genutzt werden? ${USE_PREVIEW  ? "✅" : "❌"}\n`))
+console.log(clc.bold.whiteBright(`Systemeigenschaften:`))
+console.log(clc.whiteBright(`  - Hostname: ${os.hostname()}`))
+console.log(clc.whiteBright(`  - Betriebssystem-Typ: ${os.type()}`))
+console.log(clc.whiteBright(`  - Betriebssystem-Version: ${os.release()}\n`))
+console.log(clc.whiteBright(`  - CPU-Architektur: ${os.arch()}`))
+console.log(clc.whiteBright(`  - Anzahl der CPU-Kerne: ${os.cpus().length}\n`))
+console.log(clc.whiteBright(`  - Arbeitsspeicher: ${formattedFreeMemory} MB / ${formattedTotalMemory} MB\n`))
+console.log(clc.bold.whiteBright(`Uploadereigenschaften:`))
+console.log(clc.whiteBright(`  - Domain: ${BASE_URL}`))
+console.log(clc.whiteBright(`  - Speicherplatz verwendet: ${folderSizeKb.toFixed(2)} KB (${folderSizeMb.toFixed(2)} MB)`))
+console.log(clc.whiteBright(`  - Insgesamte Dateien: ${fileCount}\n`))
+console.log(clc.bold.whiteBright(`Wenn du Hilfe oder Probleme hast, melde sie unter https://github.com/MaximilianGT500/Uploader/issues.`))
+console.log(clc.bold.whiteBright(`-----------------------------------------------------------------------------------------------------\n\n`))
 
 const createDirectoriesForAllUsers = async () => {
   try {
@@ -81,7 +162,7 @@ const createDirectoriesForAllUsers = async () => {
       fs.mkdirSync(userPreviewPath, { recursive: true });
     });
 
-    console.log('[INFO] | » Alle Benutzerordner wurden erstellt.');
+    console.log(clc.green('[INFO] | » Alle Benutzerordner wurden erstellt.'));
     const webhookData = {
       embeds: [
         {
@@ -93,15 +174,15 @@ const createDirectoriesForAllUsers = async () => {
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
-
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Erstellen der Benutzerordner:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Erstellen der Benutzerordner:', error));
     const webhookData = {
       embeds: [
         {
@@ -113,11 +194,12 @@ const createDirectoriesForAllUsers = async () => {
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
   }
 };
@@ -187,7 +269,7 @@ const getUserByToken = (token) => {
 
     pgClient.query(query, values, (error, results) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Abrufen des Benutzers aus der Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Abrufen des Benutzers aus der Datenbank:', error));
         reject(error);
       } else {
         const user = results.rows[0];
@@ -215,7 +297,7 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('[ERROR] | » Fehler bei der Authentifizierung:', error);
+    console.error(clc.red('[ERROR] | » Fehler bei der Authentifizierung:', error));
     res.status(401).json({ error: 'Ungültiges Token!' });
   }
 };
@@ -240,7 +322,7 @@ const isAdmin = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('[ERROR] | » Fehler bei der Authentifizierung:', error);
+    console.error(clc.red('[ERROR] | » Fehler bei der Authentifizierung:', error));
     return res.status(500).json({ error: 'Serverfehler bei der Authentifizierung' });
   }
 };
@@ -266,7 +348,7 @@ app.post('/login', async (req, res) => {
 
     res.json({ token: user.token, role: user.role });
   } catch (error) {
-    console.error('[ERROR] | » Fehler bei der Anmeldung:', error);
+    console.error(clc.red('[ERROR] | » Fehler bei der Anmeldung:', error));
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
 });
@@ -290,7 +372,7 @@ const TokenUsername = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('[ERROR] | » Fehler bei der Authentifizierung:', error);
+    console.error(clc.red('[ERROR] | » Fehler bei der Authentifizierung:', error));
     return res.status(500).json({ error: 'Serverfehler bei der Authentifizierung' });
   }
 };
@@ -325,7 +407,7 @@ const notFoundPage = `
         height: 50px;
         font-size: 15px;
         font-family: Arial, sans-serif;
-        font-weight: bold;
+        font-weight: whiteBright;
         border: none;
         outline: none;
         color: #fff;
@@ -385,7 +467,7 @@ const notFoundPage = `
     .text {
         font-size: 2rem;
         font-family: Arial, sans-serif;
-        font-weight: bold;
+        font-weight: whiteBright;
         color: transparent;
         text-align: center;
         -webkit-background-clip: text;
@@ -397,7 +479,7 @@ const notFoundPage = `
         bottom: 10px;
         font-size: 15px;
         font-family: Arial, sans-serif;
-        font-weight: bold;
+        font-weight: whiteBright;
         color: #434552;
         text-align: center;
     }
@@ -436,7 +518,7 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
   if (REMOVE_METADATA) {
     await removeMetadataFromImage(filePath);
   } else {
-    console.log('[INFO] | » Metadatenentfernung deaktiviert.');
+    console.log(clc.yellow('[INFO] | » Metadatenentfernung deaktiviert.'));
   }
 
   res.json({
@@ -471,7 +553,7 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
           resolve(dominantColor);
         })
         .catch(error => {
-          console.error('[ERROR] | » Fehler beim Extrahieren der Farbe:', error);
+          console.error(clc.red('[ERROR] | » Fehler beim Extrahieren der Farbe:', error));
           reject(error);
         });
     });
@@ -515,14 +597,14 @@ if (USE_DOMINANT_COLOR === true) {
     try {
       resolution = await getImageResolution(filePath);
     } catch (error) {
-      console.error('[ERROR] | » Fehler beim Ermitteln der Bildauflösung:', error);
+      console.error(clc.red('[ERROR] | » Fehler beim Ermitteln der Bildauflösung:', error));
       resolution = { width: 0, height: 0 };
     }
   } else if (isVideo) {
     try {
       resolution = await getVideoResolution(filePath);
     } catch (error) {
-      console.error('[ERROR] | » Fehler beim Ermitteln der Videoauflösung:', error);
+      console.error(clc.red('[ERROR] | » Fehler beim Ermitteln der Videoauflösung:', error));
       resolution = { width: 0, height: 0 };
     }
   } else {
@@ -560,7 +642,7 @@ if (USE_DOMINANT_COLOR === true) {
   
     pgClient.query(query, values, async (error, results) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Speichern der Dateidaten in die Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Speichern der Dateidaten in die Datenbank:', error));
   
         const webhookData = {
           embeds: [
@@ -573,14 +655,15 @@ if (USE_DOMINANT_COLOR === true) {
           username: DISCORD_WEBHOOK_NAME,
         };
   
-        try {
-          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-          console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-        } catch (error) {
-          console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+        if (process.env.LOGS !== 'false') {
+          try {
+            await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+          } catch (error) {
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+          }
         }
       } else {
-        console.log('[INFO] | » Dateidaten erfolgreich in die Datenbank gespeichert.');
+        console.log(clc.green('[INFO] | » Dateidaten erfolgreich in die Datenbank gespeichert.'));
   
         const webhookData = {
           embeds: [
@@ -593,11 +676,12 @@ if (USE_DOMINANT_COLOR === true) {
           username: DISCORD_WEBHOOK_NAME,
         };
   
-        try {
-          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-          console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-        } catch (error) {
-          console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+        if (process.env.LOGS !== 'false') {
+          try {
+            await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+          } catch (error) {
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+          }
         }
       }
     });
@@ -615,11 +699,12 @@ if (USE_DOMINANT_COLOR === true) {
     username: DISCORD_WEBHOOK_NAME,
   };
 
-  try {
-    await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-    console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-  } catch (error) {
-    console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+  if (process.env.LOGS !== 'false') {
+    try {
+      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+    } catch (error) {
+      console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+    }
   }
 });
 
@@ -666,7 +751,7 @@ const removeMetadataFromImage = async (filePath) => {
 
   try {
     await removeMetadata(filePath, read, write);
-    console.log('[INFO] | » Metadaten erfolgreich entfernt.');
+    console.log(clc.green('[INFO] | » Metadaten erfolgreich entfernt.'));
     const webhookData = {
       embeds: [
         {
@@ -678,14 +763,15 @@ const removeMetadataFromImage = async (filePath) => {
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Entfernen der Metadaten:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Entfernen der Metadaten:', error));
     const webhookData = {
       embeds: [
         {
@@ -697,11 +783,12 @@ const removeMetadataFromImage = async (filePath) => {
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
   }
 };
@@ -713,7 +800,7 @@ const getFileDataFromDatabase = async (username, filename) => {
 
     pgClient.query(query, values, async (error, results) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error));
 
         const webhookData = {
           embeds: [
@@ -726,11 +813,12 @@ const getFileDataFromDatabase = async (username, filename) => {
           username: DISCORD_WEBHOOK_NAME,
         };
 
-        try {
-          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-          console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-        } catch (error) {
-          console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+        if (process.env.LOGS !== 'false') {
+          try {
+            await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+          } catch (error) {
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+          }
         }
         reject(error);
       } else {
@@ -751,7 +839,7 @@ const getFileByFilename = async (filename) => {
 
     pgClient.query(query, values, async (error, results) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error));
         reject(error);
       } else {
         if (results.rows.length > 0) {
@@ -858,7 +946,7 @@ app.get('/view/:filename', async (req, res) => {
                   sendHtmlResponse(cssCode);
                 })
                 .catch(async error => {
-                  console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
+                  console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error));
                   const webhookData = {
                     embeds: [
                       {
@@ -870,11 +958,12 @@ app.get('/view/:filename', async (req, res) => {
                     username: DISCORD_WEBHOOK_NAME,
                   };
 
-                  try {
-                    await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-                    console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-                  } catch (error) {
-                    console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+                  if (process.env.LOGS !== 'false') {
+                    try {
+                      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+                    } catch (error) {
+                      console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+                    }
                   }
 
                   const cssCode = `box-shadow: 0px 60px 100px 0px #${BOX_SHADOW_COLOR}, 0px 45px 26px 0px rgba(0,0,0,0.14);`;
@@ -911,7 +1000,7 @@ app.get('/view/:filename', async (req, res) => {
           
           .file-container {
             position: relative;
-            max-width: 30%;
+            max-width: 50%;
             width: auto;
             animation: rainbow 10s linear infinite;
             border-radius: 10px;
@@ -1070,7 +1159,7 @@ app.get('/view/:filename', async (req, res) => {
       });
     });
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Abrufen der Datei:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Datei:', error));
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
 });
@@ -1123,7 +1212,7 @@ app.get('/oembed/:filename', async (req, res) => {
       res.json(oembedResponse);
     });
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Abrufen der Datei:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Datei:', error));
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
 });
@@ -1149,7 +1238,7 @@ app.get('/download/:filename', async (req, res) => {
       res.download(filePath);
     });
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Abrufen der Datei:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Datei:', error));
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
 });
@@ -1172,18 +1261,18 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
 
     await pgClient.query(deleteQuery, deleteValues);
 
-    console.log('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.');
+    console.log(clc.green('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.'));
 
     const userFolderPath = path.join(__dirname, 'uploads', username);
     if (fs.existsSync(userFolderPath)) {
       fs.rmdirSync(userFolderPath, { recursive: true });
-      console.log('[INFO] | » Nutzerordner erfolgreich gelöscht.');
+      console.log(clc.green('[INFO] | » Nutzerordner erfolgreich gelöscht.'));
     }
 
     const deleteFilesQuery = 'DELETE FROM file_data WHERE username = $1';
     await pgClient.query(deleteFilesQuery, deleteValues);
 
-    console.log('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.');
+    console.log(clc.green('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.'));
 
     const webhookData = {
       embeds: [
@@ -1196,17 +1285,18 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
 
     res.json({ success: true, message: 'Nutzer erfolgreich gelöscht' });
 
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Löschen des Nutzers:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Löschen des Nutzers:', error));
 
     const webhookData = {
       embeds: [
@@ -1219,11 +1309,12 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
 
     res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
@@ -1239,7 +1330,7 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
 
     pgClient.query(deleteQuery, deleteValues, async (error, results) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Löschen des Nutzers aus der Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Löschen des Nutzers aus der Datenbank:', error));
 
         const webhookData = {
           embeds: [
@@ -1252,27 +1343,28 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
           username: DISCORD_WEBHOOK_NAME,
         };
 
-        try {
-          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-          console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-        } catch (error) {
-          console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+        if (process.env.LOGS !== 'false') {
+          try {
+            await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+          } catch (error) {
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+          }
         }
 
         res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
       } else {
-        console.log('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.');
+        console.log(clc.green('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.'));
 
         const userFolderPath = path.join(__dirname, 'uploads', username);
         if (fs.existsSync(userFolderPath)) {
           fs.rmdirSync(userFolderPath, { recursive: true });
-          console.log('[INFO] | » Nutzerordner erfolgreich gelöscht.');
+          console.log(clc.green('[INFO] | » Nutzerordner erfolgreich gelöscht.'));
         }
 
         const deleteFilesQuery = 'DELETE FROM file_data WHERE username = $1';
         pgClient.query(deleteFilesQuery, deleteValues, async (error) => {
           if (error) {
-            console.error('[ERROR] | » Fehler beim Löschen der Dateieinträge aus der Datenbank:', error);
+            console.error(clc.red('[ERROR] | » Fehler beim Löschen der Dateieinträge aus der Datenbank:', error));
             const webhookData = {
               embeds: [
                 {
@@ -1284,15 +1376,16 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
               username: DISCORD_WEBHOOK_NAME,
             };
 
-            try {
-              await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-              console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-            } catch (error) {
-              console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+            if (process.env.LOGS !== 'false') {
+              try {
+                await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+              } catch (error) {
+                console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+              }
             }
             res.status(500).json({ error: 'Fehler beim Löschen der Dateieinträge' });
           } else {
-            console.log('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.');
+            console.log(clc.green('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.'));
 
             const webhookData = {
               embeds: [
@@ -1305,11 +1398,12 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
               username: DISCORD_WEBHOOK_NAME,
             };
 
-            try {
-              await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-              console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-            } catch (error) {
-              console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+            if (process.env.LOGS !== 'false') {
+              try {
+                await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+              } catch (error) {
+                console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+              }
             }
             res.json({ success: true, message: 'Nutzer erfolgreich gelöscht' });
           }
@@ -1317,7 +1411,7 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Löschen des Nutzers:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Löschen des Nutzers:', error));
     const webhookData = {
       embeds: [
         {
@@ -1329,11 +1423,12 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
     res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
   }
@@ -1361,7 +1456,7 @@ const deleteFile = async (username, filename) => {
   return new Promise(async (resolve, reject) => {
     pgClient.query(deleteQuery, deleteValues, async (error) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Löschen des Eintrags aus der Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Löschen des Eintrags aus der Datenbank:', error));
         const webhookData = {
           embeds: [
             {
@@ -1373,15 +1468,16 @@ const deleteFile = async (username, filename) => {
           username: DISCORD_WEBHOOK_NAME,
         };
 
-        try {
-          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-          console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-        } catch (error) {
-          console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+        if (process.env.LOGS !== 'false') {
+          try {
+            await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+          } catch (error) {
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+          }
         }
         reject(error);
       } else {
-        console.log('[INFO] | » Eintrag erfolgreich aus der Datenbank gelöscht.');
+        console.log(clc.green('[INFO] | » Eintrag erfolgreich aus der Datenbank gelöscht.'));
         const webhookData = {
           embeds: [
             {
@@ -1393,11 +1489,12 @@ const deleteFile = async (username, filename) => {
           username: DISCORD_WEBHOOK_NAME,
         };
 
-        try {
-          await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-          console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-        } catch (error) {
-          console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+        if (process.env.LOGS !== 'false') {
+          try {
+            await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+          } catch (error) {
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+          }
         }
         resolve();
       }
@@ -1420,14 +1517,15 @@ app.delete('/delete-file/:username/:filename', authenticate, isAdmin, async (req
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Löschen der Datei:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Löschen der Datei:', error));
     const webhookData = {
       embeds: [
         {
@@ -1439,11 +1537,12 @@ app.delete('/delete-file/:username/:filename', authenticate, isAdmin, async (req
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
     res.status(500).json({ error: 'Fehler beim Löschen der Datei' });
   }
@@ -1464,14 +1563,15 @@ app.delete('/delete-file/:filename', authenticate, TokenUsername, async (req, re
       username: DISCORD_WEBHOOK_NAME,
     };
 
-    try {
-      await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-      console.log('[INFO] | » Webhook-Log erfolgreich an Discord gesendet.');
-    } catch (error) {
-      console.error('[ERROR] | » Fehler beim Senden des Webhook-Logs an Discord:', error);
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+      }
     }
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Löschen der Datei:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Löschen der Datei:', error));
     res.status(500).json({ error: 'Fehler beim Löschen der Datei' });
   }
 });
@@ -1495,7 +1595,7 @@ app.get('/files/:username', authenticate, isAdmin, async (req, res) => {
     const files = await getFilesInDirectory(userDirPath);
     res.json({ files });
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Abrufen der Dateien:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateien:', error));
     res.status(500).json({ error: 'Fehler beim Abrufen der Dateien' });
   }
 });
@@ -1506,9 +1606,9 @@ app.get('/files', authenticate, TokenUsername, async (req, res) => {
     const files = await getFilesInDirectory(userDirPath);
     res.json({ files });
   } catch (error) {
-    console.error('[ERROR] | » Fehler beim Abrufen der Dateien:', error);
+    console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateien:', error));
     res.status(500).json({ error: 'Fehler beim Abrufen der Dateien' });
   }
 });
 
-app.listen(PORT, () => console.log('[INFO] | » Server gestartet auf Port: ' + PORT));
+app.listen(PORT, () => console.log(clc.green('[INFO] | » Server gestartet auf Port: ' + PORT)));
