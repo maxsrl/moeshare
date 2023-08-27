@@ -391,7 +391,7 @@ const notFoundPage = `
     justify-content: center;
     align-items: center;
     height: 100vh;
-    background: #18191D;
+    background: #0e0e0e;
     margin: 0;
     font-family: Arial, sans-serif;
     animation: bgAnimation 5s infinite alternate;
@@ -407,7 +407,7 @@ const notFoundPage = `
         height: 50px;
         font-size: 15px;
         font-family: Arial, sans-serif;
-        font-weight: whiteBright;
+        font-weight: bold;
         border: none;
         outline: none;
         color: #fff;
@@ -467,7 +467,7 @@ const notFoundPage = `
     .text {
         font-size: 2rem;
         font-family: Arial, sans-serif;
-        font-weight: whiteBright;
+        font-weight: bold;
         color: transparent;
         text-align: center;
         -webkit-background-clip: text;
@@ -479,12 +479,12 @@ const notFoundPage = `
         bottom: 10px;
         font-size: 15px;
         font-family: Arial, sans-serif;
-        font-weight: whiteBright;
-        color: #434552;
+        font-weight: bold;
+        color: #343540;
         text-align: center;
     }
     a {
-        color: #434552;
+        color: #343540;
     }
   </style>
 </head>
@@ -992,7 +992,7 @@ app.get('/view/:filename', async (req, res) => {
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background: #18191D;
+            background: #0e0e0e;
             margin: 0;
             font-family: Arial, sans-serif;
             animation: bgAnimation 5s infinite alternate;
@@ -1030,7 +1030,7 @@ app.get('/view/:filename', async (req, res) => {
                 border: none;
                 outline: none;
                 color: #fff;
-                background: #111;
+                background: #343540;
                 cursor: pointer;
                 position: relative;
                 z-index: 0;
@@ -1097,7 +1097,7 @@ app.get('/view/:filename', async (req, res) => {
               font-size: 20px;
               font-family: Arial, sans-serif;
               font-weight: bold;
-              color: #434552;
+              color: #343540;
               text-align: center;
               margin-top: 65px;
             }
@@ -1107,11 +1107,11 @@ app.get('/view/:filename', async (req, res) => {
                 font-size: 15px;
                 font-family: Arial, sans-serif;
                 font-weight: bold;
-                color: #434552;
+                color: #343540;
                 text-align: center;
             }
             a {
-                color: #434552;
+                color: #343540;
             }
           </style>
         </head>
