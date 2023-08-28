@@ -13,6 +13,9 @@ services:
       - type: bind
         source: ./db/datenbank.sqlite
         target: /opt/uploader/db/datenbank.sqlite
+      - type: bind
+        source: ./uploads
+        target: /opt/uploader/uploads
     tmpfs: /tmp
     tty: true
     environment:
