@@ -17,7 +17,7 @@ if [ -f "$FILE" ]; then
       -H "User-Agent: ShareX/1.0.0" \
       -H "Authorization: $KEY" \
       -F "file=@$IMAGEPATH$IMAGENAME.png" "https://$DOMAIN" | jq -r '.view')
-      printf "%s" "$VIEW_URL" | xclip -sel clip  
+      printf "%s" "$URL" | xclip -sel clip  
     
     rm "$IMAGEPATH$IMAGENAME.png"
 else 
