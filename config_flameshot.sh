@@ -16,9 +16,11 @@ if [ -f "$FILE" ]; then
       -H "Accept: application/json" \
       -H "User-Agent: ShareX/1.0.0" \
       -H "Authorization: $KEY" \
-      -F "file=@$IMAGEPATH$IMAGENAME.png" "https://$DOMAIN" | grep -Po '(?<="resource":")[^"]+')
-    printf "%s" "$URL" | xclip -sel clip
+      -F "file=@$IMAGEPATH$IMAGENAME.png" "https://$DOMAIN" | jq -r '.view')
+      printf "%s" "$VIEW_URL" | xclip -sel clip  
+    
     rm "$IMAGEPATH$IMAGENAME.png"
 else 
     echo "Aborted."
 fi
+
