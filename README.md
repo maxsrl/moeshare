@@ -5,7 +5,7 @@
 
 🛑 Wenn du den Uploader bereits Installiert hast, mache eine [Migration], da er nun SQLite nutzt. Dies macht mehr Sinn für solch ein Projekt.
 
-[Migration]: https://github.com/MaximilianGT500/Uploader/main/MIGRATION.md
+[Migration]: https://github.com/MaximilianGT500/Uploader/blob/main/MIGRATION.md
 
 Dies ist ein einfacher ShareX-Uploader, der auf Node.js und SQLite basiert. Der Uploader ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
 
