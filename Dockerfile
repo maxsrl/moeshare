@@ -1,10 +1,11 @@
-FROM node:current-slim
+FROM node:20-slim
 
 WORKDIR /opt/uploader/
 COPY . ./
 
 RUN mkdir -p /opt/uploader/uploads/ && \
     mkdir -p /opt/uploader/public/assets/ && \
+	mkdir -p /opt/uploader/db/ && \
     touch /opt/uploader/.env
 	
 ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
@@ -15,17 +16,12 @@ ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
     JWT_TOKEN=CHANGEME \
     REMOVE_METADATA=true \
     USE_PREVIEW=true \
-    LOGS=true \
+    LOGS=false \
     SITE_TITLE=EXAMPLE \
     SITE_FAVICON=/assets/favicon.png \
     OG_TITLE=EXAMPLE \
     OG_DESCRIPTION=EXAMPLE \
     THEME_COLOR=&dominantColor \
-    DATABASE_HOST=127.0.0.1 \
-    DATABASE_PORT=5432 \
-    DATABASE_USER=postgres \
-    DATABASE_PASSWORD=postgres \
-    DATABASE_DATABASE=postgres \
     AUTHOR_URL=https://example.com \
     AUTHOR_NAME=EXAMPLE \
     PROVIDER_NAME=EXAMPLE.COM \
@@ -41,5 +37,5 @@ ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
     REDIRECT_URL=https://example.com
 
 
-RUN npm install
+RUN npm ci
 CMD ["node", "index.js"]

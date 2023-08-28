@@ -3,7 +3,11 @@
 
 🛑 Die MariaDB-Version ist veraltet. Update den Uploader nichtmehr, wenn du MariaDB nutzten möchtest. Lade alle Dateien herunter und lade sie wieder hoch, bevor du auf einer neuen Version updaten möchtest.
 
-Dies ist ein einfacher ShareX-Uploader, der auf Node.js und Postgres basiert. Der Uploader ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
+🛑 Wenn du den Uploader bereits Installiert hast, mache eine [Migration], da er nun SQLite nutzt. Dies macht mehr Sinn für solch ein Projekt.
+
+[Migration]: https://github.com/MaximilianGT500/Uploader/edit/main/README.md
+
+Dies ist ein einfacher ShareX-Uploader, der auf Node.js und SQLite basiert. Der Uploader ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
 
 ## Developer
 Du bist ein Developer und siehst hier Fehler oder hast Verbesserungsvorschläge? Zögere nicht ein Issue zu öffnen bzw. eine Pull Request.
@@ -34,21 +38,22 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
 <summary><em>Erweitern für die Lokale Installation</em></summary>
 <br>
 
-1. Node.JS v18.X.X installation
+1. Node.JS v20.X.X installation
 
    Debian:
    ```bash
-   cd ~ && apt install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt install nodejs
+   cd ~ && apt --assume-yes install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt --assume-yes install nodejs
    ```
    Ubuntu:
    ```bash
-   cd ~ && apt install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt install nodejs
+   cd ~ && apt --assume-yes install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt --assume-yes install nodejs
    ```
 3. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
-4. Passe nun die `config.js` an.
-5. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
-6. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
-7. Führe `npm start` aus, um den Uploader zu starten.
+4. Passe nun die `example.env` an.
+5. Nenne nun die `example.env` zu `.env` um.
+6. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
+7. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
+8. Führe `npm start` aus, um den Uploader zu starten.
 
 </details>
 
@@ -58,22 +63,23 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
 <summary><em>Erweitern für die Lokale Installation mit PM2</em></summary>
 <br>
 
-1. Node.JS v18.X.X installation
+1. Node.JS v20.X.X installation
 
    Debian:
    ```bash
-   cd ~ && apt install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt install nodejs
+   cd ~ && apt --assume-yes install curl && curl -sL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt --assume-yes install nodejs
    ```
    Ubuntu:
    ```bash
-   cd ~ && apt install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt install nodejs
+   cd ~ && apt --assume-yes install curl && curl -sL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt --assume-yes install nodejs
    ```
 3. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
-4. Passe nun die `config.js` an.
-5. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
-6. Führe `npm i pm2 -g` aus, um PM2 zu installieren.
-7. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
-8. Führe `pm2 start index.js -i max --name Uploader` aus, um den Uploader zu starten und ihn zu Clustern mit allen Verfügbaren Threads.
+4. Passe nun die `example.env` an.
+5. Nenne nun die `example.env` zu `.env` um.
+6. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
+7. Führe `npm i pm2 -g` aus, um PM2 zu installieren.
+8. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
+9. Führe `pm2 start index.js -i max --name Uploader` aus, um den Uploader zu starten und ihn zu Clustern mit allen Verfügbaren Threads.
 
 </details>
 
@@ -88,7 +94,7 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
    Debian (Debian Bookworm 12 (stable), Debian Bullseye 11 (oldstable)):
    ```bash
     sudo apt-get update
-    sudo apt-get install ca-certificates curl gnupg
+    sudo apt-get --assume-yes install ca-certificates curl gnupg
     sudo install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     sudo chmod a+r /etc/apt/keyrings/docker.gpg
@@ -97,13 +103,13 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
     "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     sudo apt-get update
-    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    sudo apt-get --assume-yes install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
    ```
    
    Ubuntu (Ubuntu Lunar 23.04, Ubuntu Kinetic 22.10, Ubuntu Jammy 22.04 (LTS), Ubuntu Focal 20.04 (LTS)):
    ```bash
     sudo apt-get update
-    sudo apt-get install ca-certificates curl gnupg
+    sudo apt-get --assume-yes install ca-certificates curl gnupg
     sudo install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     sudo chmod a+r /etc/apt/keyrings/docker.gpg
@@ -112,12 +118,12 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
     "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     sudo apt-get update
-    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    sudo apt-get --assume-yes install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
    ```
    
 2. Lade dir die [docker-compose.yml] auf dein Server herunter
 2. Bearbeite die `docker-compose.yml` nach deinen Vorstellungen.
-3. Führe `docker compose up -d datenbank && docker compose up -d uploader && docker compose exec uploader npm run register && docker compose restart` aus, um den ersten Nutzer zu erstellen und um den Uploader zu starten.
+3. Führe `docker compose up -d && docker compose exec uploader npm run register && docker compose restart` aus, um den ersten Nutzer zu erstellen und um den Uploader zu starten.
 
 [docker-compose.yml]: https://raw.githubusercontent.com/MaximilianGT500/Uploader/main/docker-compose.yml
 

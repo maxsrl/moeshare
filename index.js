@@ -9,7 +9,7 @@ const Vibrant = require('node-vibrant');
 const { removeMetadata, base64StringToArrayBuffer } = require('@qoocollections/content-metadata-remover');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-const { Client } = require('pg');
+const sqlite3 = require('sqlite3').verbose();
 const { DateTime } = require('luxon');
 const now = DateTime.now().setZone('Europe/Berlin');
 const currentHour = now.hour;
@@ -17,7 +17,7 @@ const os = require('os');
 const clc = require('cli-color');
 
 require('dotenv').config();
-const {BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
+const { BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
 const AUDIO_FORMATS = process.env.AUDIO_FORMATS.split(',');
 const VIDEO_FORMATS = process.env.VIDEO_FORMATS.split(',');
 const IMAGE_FORMATS = process.env.IMAGE_FORMATS.split(',');
@@ -38,40 +38,32 @@ function parseColor(hexColor) {
   return parseInt(hexColor, 16);
 }
 
-const pgClient = new Client({
-  user: DATABASE_USER,
-  host: DATABASE_HOST,
-  database: DATABASE_DATABASE,
-  password: DATABASE_PASSWORD,
-  port: DATABASE_PORT
-});
+const db = new sqlite3.Database('./db/datenbank.sqlite', (sqliteError) => {
+  if (sqliteError) {
+    console.error('[ERROR] | » Fehler bei der Verbindung zur SQLite-Datenbank:', sqliteError);
+  } else {
+    console.log('[INFO] | » Die Verbindung zur SQLite-Datenbank wurde erfolgreich hergestellt.');
 
-pgClient.connect((pgError) => {
-  if (pgError) {
-    console.error(clc.red('[ERROR] | » Fehler bei der Verbindung zur PostgreSQL:', pgError));
-    return;
+    const createTableQuery = `CREATE TABLE IF NOT EXISTS file_data (
+      id INTEGER PRIMARY KEY,
+      username TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      creation_date TEXT NOT NULL,
+      size_mb REAL NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      dominant_color TEXT NOT NULL,
+      resolution_width INTEGER NOT NULL,
+      resolution_height INTEGER NOT NULL
+    )`;
+
+    db.run(createTableQuery, (error) => {
+      if (error) {
+        console.error('[ERROR] | » Fehler beim Erstellen der Tabelle "file_data":', error);
+      } else {
+        console.log('[INFO] | » Tabelle "file_data" erfolgreich erstellt oder bereits vorhanden.');
+      }
+    });
   }
-  console.log(clc.green('[INFO] | » Die Verbindung zur PostgreSQL wurde erfolgreich hergestellt.'));
-
-  const createTableQuery = `CREATE TABLE IF NOT EXISTS file_data (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(255) NOT NULL,
-    filename VARCHAR(255) NOT NULL,
-    creation_date VARCHAR(255) NOT NULL,
-    size_mb DECIMAL(10, 3) NOT NULL,
-    size_bytes INT NOT NULL,
-    dominant_color VARCHAR(7) NOT NULL,
-    resolution_width INT NOT NULL,
-    resolution_height INT NOT NULL
-  )`;
-
-  pgClient.query(createTableQuery, (error, results) => {
-    if (error) {
-      console.error(clc.red('[ERROR] | » Fehler beim Erstellen der Tabelle "file_data":', error));
-    } else {
-      console.log(clc.green('[INFO] | » Tabelle "file_data" erfolgreich erstellt oder bereits vorhanden.'));
-    }
-  });
 });
 
 let greeting;
@@ -138,8 +130,8 @@ console.log(clc.whiteBright(`  - Sollen die Metadaten der Datei gelöscht werden
 console.log(clc.whiteBright(`  - Soll ein Preview erstellt und genutzt werden? ${USE_PREVIEW  ? "✅" : "❌"}\n`))
 console.log(clc.bold.whiteBright(`Systemeigenschaften:`))
 console.log(clc.whiteBright(`  - Hostname: ${os.hostname()}`))
-console.log(clc.whiteBright(`  - Betriebssystem-Typ: ${os.type()}`))
-console.log(clc.whiteBright(`  - Betriebssystem-Version: ${os.release()}\n`))
+console.log(clc.whiteBright(`  - Kernel-Typ: ${os.type()}`))
+console.log(clc.whiteBright(`  - Kernel-Version: ${os.release()}\n`))
 console.log(clc.whiteBright(`  - CPU-Architektur: ${os.arch()}`))
 console.log(clc.whiteBright(`  - Anzahl der CPU-Kerne: ${os.cpus().length}\n`))
 console.log(clc.whiteBright(`  - Arbeitsspeicher: ${formattedFreeMemory} MB / ${formattedTotalMemory} MB\n`))
@@ -153,9 +145,8 @@ console.log(clc.bold.whiteBright(`----------------------------------------------
 const createDirectoriesForAllUsers = async () => {
   try {
     const users = await getAllUsers();
-
-    users.forEach(user => {
-      const uploadPath = path.join(__dirname, 'uploads', user.username);
+    users.forEach(users => {
+      const uploadPath = path.join(__dirname, 'uploads', users);
       fs.mkdirSync(uploadPath, { recursive: true });
     
       const userPreviewPath = path.join(uploadPath, 'preview');
@@ -206,11 +197,13 @@ const createDirectoriesForAllUsers = async () => {
 
 const getAllUsers = () => {
   return new Promise((resolve, reject) => {
-    pgClient.query('SELECT username FROM users', (error, results) => {
+    const query = 'SELECT username FROM users';
+    db.all(query, [], (error, rows) => {
       if (error) {
         reject(error);
       } else {
-        resolve(results.rows);
+        const usernames = rows.map(row => row.username);
+        resolve(usernames);
       }
     });
   });
@@ -248,15 +241,14 @@ const upload = multer({
 
 const getUserByUsername = (username) => {
   return new Promise((resolve, reject) => {
-    const query = 'SELECT * FROM users WHERE username = $1';
+    const query = 'SELECT * FROM users WHERE username = ?';
     const values = [username];
 
-    pgClient.query(query, values, (error, results) => {
+    db.get(query, values, (error, row) => {
       if (error) {
         reject(error);
       } else {
-        const user = results.rows[0];
-        resolve(user);
+        resolve(row);
       }
     });
   });
@@ -264,16 +256,15 @@ const getUserByUsername = (username) => {
 
 const getUserByToken = (token) => {
   return new Promise((resolve, reject) => {
-    const query = 'SELECT * FROM users WHERE token = $1';
+    const query = 'SELECT * FROM users WHERE token = ?';
     const values = [token];
 
-    pgClient.query(query, values, (error, results) => {
+    db.get(query, values, (error, row) => {
       if (error) {
-        console.error(clc.red('[ERROR] | » Fehler beim Abrufen des Benutzers aus der Datenbank:', error));
+        console.error('[ERROR] | » Fehler beim Abrufen des Benutzers aus der Datenbank:', error);
         reject(error);
       } else {
-        const user = results.rows[0];
-        resolve(user);
+        resolve(row);
       }
     });
   });
@@ -637,12 +628,12 @@ if (USE_DOMINANT_COLOR === true) {
   const sizeInMB = parseFloat((sizeInBytes / (1024 * 1024)).toFixed(3));
 
   const saveFileDataToDatabase = async (username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor, resolution) => {
-    const query = 'INSERT INTO file_data (username, filename, creation_date, size_mb, size_bytes, dominant_color, resolution_width, resolution_height) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
+    const query = 'INSERT INTO file_data (username, filename, creation_date, size_mb, size_bytes, dominant_color, resolution_width, resolution_height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     const values = [username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor, resolution.width, resolution.height];
   
-    pgClient.query(query, values, async (error, results) => {
+    db.run(query, values, async (error) => {
       if (error) {
-        console.error(clc.red('[ERROR] | » Fehler beim Speichern der Dateidaten in die Datenbank:', error));
+        console.error('[ERROR] | » Fehler beim Speichern der Dateidaten in die Datenbank:', error);
   
         const webhookData = {
           embeds: [
@@ -659,11 +650,11 @@ if (USE_DOMINANT_COLOR === true) {
           try {
             await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           } catch (error) {
-            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+            console.error('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error);
           }
         }
       } else {
-        console.log(clc.green('[INFO] | » Dateidaten erfolgreich in die Datenbank gespeichert.'));
+        console.log('[INFO] | » Dateidaten erfolgreich in die Datenbank gespeichert.');
   
         const webhookData = {
           embeds: [
@@ -680,13 +671,13 @@ if (USE_DOMINANT_COLOR === true) {
           try {
             await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           } catch (error) {
-            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+            console.error('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error);
           }
         }
       }
     });
   };
-
+  
   saveFileDataToDatabase(req.user.username, filename, creationDate, sizeInMB, sizeInBytes, dominantColor, resolution);
   const webhookData = {
     embeds: [
@@ -795,17 +786,17 @@ const removeMetadataFromImage = async (filePath) => {
 
 const getFileDataFromDatabase = async (username, filename) => {
   return new Promise(async (resolve, reject) => {
-    const query = 'SELECT * FROM file_data WHERE username = $1 AND filename = $2';
+    const query = 'SELECT * FROM file_data WHERE username = ? AND filename = ?';
     const values = [username, filename];
 
-    pgClient.query(query, values, async (error, results) => {
+    db.all(query, values, async (error, rows) => {
       if (error) {
-        console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error));
+        console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
 
         const webhookData = {
           embeds: [
             {
-              title: 'Neue Datei hochgeladen',
+              title: 'Dateidaten abgerufen',
               description: 'Fehler beim Abrufen der Dateidaten aus der Datenbank\n' + error,
               color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
             }
@@ -817,13 +808,13 @@ const getFileDataFromDatabase = async (username, filename) => {
           try {
             await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           } catch (error) {
-            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
+            console.error('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error);
           }
         }
         reject(error);
       } else {
-        if (results.rows.length > 0) {
-          resolve(results.rows[0]);
+        if (rows.length > 0) {
+          resolve(rows[0]);
         } else {
           resolve(null);
         }
@@ -834,16 +825,16 @@ const getFileDataFromDatabase = async (username, filename) => {
 
 const getFileByFilename = async (filename) => {
   return new Promise(async (resolve, reject) => {
-    const query = 'SELECT * FROM file_data WHERE filename = $1';
+    const query = 'SELECT * FROM file_data WHERE filename = ?';
     const values = [filename];
 
-    pgClient.query(query, values, async (error, results) => {
+    db.all(query, values, async (error, rows) => {
       if (error) {
-        console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error));
+        console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
         reject(error);
       } else {
-        if (results.rows.length > 0) {
-          resolve(results.rows[0]);
+        if (rows.length > 0) {
+          resolve(rows[0]);
         } else {
           resolve(null);
         }
@@ -1247,19 +1238,19 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
   const username = req.params.username;
 
   try {
-    const checkUserQuery = 'SELECT * FROM users WHERE username = $1';
+    const checkUserQuery = 'SELECT * FROM users WHERE username = ?';
     const checkUserValues = [username];
 
-    const userCheckResult = await pgClient.query(checkUserQuery, checkUserValues);
+    const userCheckResult = await db.all(checkUserQuery, checkUserValues);
 
-    if (userCheckResult.rows.length === 0) {
+    if (userCheckResult.length === 0) {
       return res.status(404).json({ error: 'Benutzer nicht gefunden' });
     }
 
-    const deleteQuery = 'DELETE FROM users WHERE username = $1';
+    const deleteQuery = 'DELETE FROM users WHERE username = ?';
     const deleteValues = [username];
 
-    await pgClient.query(deleteQuery, deleteValues);
+    await db.run(deleteQuery, deleteValues);
 
     console.log(clc.green('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.'));
 
@@ -1269,8 +1260,8 @@ app.delete('/delete-user/:username', isAdmin, TokenUsername, async (req, res) =>
       console.log(clc.green('[INFO] | » Nutzerordner erfolgreich gelöscht.'));
     }
 
-    const deleteFilesQuery = 'DELETE FROM file_data WHERE username = $1';
-    await pgClient.query(deleteFilesQuery, deleteValues);
+    const deleteFilesQuery = 'DELETE FROM file_data WHERE username = ?';
+    await db.run(deleteFilesQuery, deleteValues);
 
     console.log(clc.green('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.'));
 
@@ -1325,93 +1316,48 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
   const username = req.TokenUsername;
 
   try {
-    const deleteQuery = 'DELETE FROM users WHERE username = $1';
+    const deleteQuery = 'DELETE FROM users WHERE username = ?';
     const deleteValues = [username];
 
-    pgClient.query(deleteQuery, deleteValues, async (error, results) => {
-      if (error) {
-        console.error(clc.red('[ERROR] | » Fehler beim Löschen des Nutzers aus der Datenbank:', error));
+    await db.run(deleteQuery, deleteValues);
 
-        const webhookData = {
-          embeds: [
-            {
-              title: 'Ein Nutzer wurde gelöscht',
-              description: '\n' + error,
-              color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
-            }
-          ],
-          username: DISCORD_WEBHOOK_NAME,
-        };
+    console.log(clc.green('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.'));
 
-        if (process.env.LOGS !== 'false') {
-          try {
-            await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-          } catch (error) {
-            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
-          }
+    const userFolderPath = path.join(__dirname, 'uploads', username);
+    if (fs.existsSync(userFolderPath)) {
+      fs.rmdirSync(userFolderPath, { recursive: true });
+      console.log(clc.green('[INFO] | » Nutzerordner erfolgreich gelöscht.'));
+    }
+
+    const deleteFilesQuery = 'DELETE FROM file_data WHERE username = ?';
+    await db.run(deleteFilesQuery, deleteValues);
+
+    console.log(clc.green('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.'));
+
+    const webhookData = {
+      embeds: [
+        {
+          title: 'Ein Nutzer wurde gelöscht',
+          description: 'Der Nutzer ' + username + ' wurde erfolgreich gelöscht.',
+          color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
         }
+      ],
+      username: DISCORD_WEBHOOK_NAME,
+    };
 
-        res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
-      } else {
-        console.log(clc.green('[INFO] | » Nutzer erfolgreich aus der Datenbank gelöscht.'));
-
-        const userFolderPath = path.join(__dirname, 'uploads', username);
-        if (fs.existsSync(userFolderPath)) {
-          fs.rmdirSync(userFolderPath, { recursive: true });
-          console.log(clc.green('[INFO] | » Nutzerordner erfolgreich gelöscht.'));
-        }
-
-        const deleteFilesQuery = 'DELETE FROM file_data WHERE username = $1';
-        pgClient.query(deleteFilesQuery, deleteValues, async (error) => {
-          if (error) {
-            console.error(clc.red('[ERROR] | » Fehler beim Löschen der Dateieinträge aus der Datenbank:', error));
-            const webhookData = {
-              embeds: [
-                {
-                  title: 'Ein Nutzer wurde gelöscht',
-                  description: '\n' + error,
-                  color: parseColor(DISCORD_WEBHOOK_ERROR_COLOR),
-                }
-              ],
-              username: DISCORD_WEBHOOK_NAME,
-            };
-
-            if (process.env.LOGS !== 'false') {
-              try {
-                await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-              } catch (error) {
-                console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
-              }
-            }
-            res.status(500).json({ error: 'Fehler beim Löschen der Dateieinträge' });
-          } else {
-            console.log(clc.green('[INFO] | » Dateieinträge erfolgreich aus der Datenbank gelöscht.'));
-
-            const webhookData = {
-              embeds: [
-                {
-                  title: 'Ein Nutzer wurde gelöscht',
-                  description: 'Der Nutzer ' + username + ' wurde erfolgreich gelöscht.',
-                  color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
-                }
-              ],
-              username: DISCORD_WEBHOOK_NAME,
-            };
-
-            if (process.env.LOGS !== 'false') {
-              try {
-                await axios.post(DISCORD_WEBHOOK_URL, webhookData);
-              } catch (error) {
-                console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
-              }
-            }
-            res.json({ success: true, message: 'Nutzer erfolgreich gelöscht' });
-          }
-        });
+    if (process.env.LOGS !== 'false') {
+      try {
+        await axios.post(DISCORD_WEBHOOK_URL, webhookData);
+      } catch (error) {
+        console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
       }
-    });
+    }
+
+    res.json({ success: true, message: 'Nutzer erfolgreich gelöscht' });
+
   } catch (error) {
     console.error(clc.red('[ERROR] | » Fehler beim Löschen des Nutzers:', error));
+
     const webhookData = {
       embeds: [
         {
@@ -1430,6 +1376,7 @@ app.delete('/delete-user', authenticate, TokenUsername, async (req, res) => {
         console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
       }
     }
+
     res.status(500).json({ error: 'Fehler beim Löschen des Nutzers' });
   }
 });
@@ -1450,11 +1397,11 @@ const deleteFile = async (username, filename) => {
     fs.unlinkSync(previewPath);
   }
 
-  const deleteQuery = 'DELETE FROM file_data WHERE username = $1 AND filename = $2';
+  const deleteQuery = 'DELETE FROM file_data WHERE username = ? AND filename = ?';
   const deleteValues = [username, filename];
 
   return new Promise(async (resolve, reject) => {
-    pgClient.query(deleteQuery, deleteValues, async (error) => {
+    db.run(deleteQuery, deleteValues, async (error) => {
       if (error) {
         console.error(clc.red('[ERROR] | » Fehler beim Löschen des Eintrags aus der Datenbank:', error));
         const webhookData = {
