@@ -39,3 +39,36 @@ Gehe in den Ordner von den Uploader
     apt remove --purge wget
     ```
 #### Nun hast du erfolgreich von PostgreSQL zu SQLite Migriert.
+
+
+## Von MariaDB/MySQL zu SQLite3
+Gehe in den Ordner von den Uploader
+
+ 1. Gehe mit diesen Befehl in den Container der Datenbank: `docker exec -it uploader-datenbank bash`
+
+ 2. Führe nun diese Befehle aus:
+    ```bash
+    apt update && apt --assume-yes install python3 python3-pip
+    pip install mysql-to-sqlite3
+    cd /var/lib/mysql
+    mysql2sqlite -f ./datenbank.sqlite -d uploader -u uploader --mysql-password 8RAcsRYSj75nePoCvzatZeqtaeyd8p7C4EtyWx78d2XwdJqa7c5SLuWqojWuz3yd
+    exit
+    ```
+ 3. Nachdem du aus dem Container bist, führe diese Befehle aus **(Wenn du NodeJS bereits hast, überspringe die Zeilen: 2-5)**:
+    ```bash
+    apt install wget
+    docker compose down
+    mkdir db
+    cp mariadb/data/datenbank.sqlite db/datenbank.sqlite
+    rm -r mariadb
+    mv docker-compose.yml docker-compose.old.yml
+    wget https://raw.githubusercontent.com/MaximilianGT500/Uploader/main/docker-compose.migrieren.yml
+    mv docker-compose.migrieren.yml docker-compose.yml
+    ```
+ 3. Ändere die `docker-compose.yml` nach deinen Wünschen.
+ 5. Starte den Uploader mit `docker compose up -d`
+ 6. **(Optimal)** Wenn du die gerade installierte Sotware löschen möchtest, führe diese Befehle aus:
+    ```bash
+    apt remove --purge wget
+    ```
+#### Nun hast du erfolgreich von MariaDB/MySQL zu SQLite Migriert.
