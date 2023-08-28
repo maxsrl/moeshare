@@ -15,6 +15,8 @@ const now = DateTime.now().setZone('Europe/Berlin');
 const currentHour = now.hour;
 const os = require('os');
 const clc = require('cli-color');
+const ffprobe = require('ffprobe');
+const ffprobeStatic = require('ffprobe-static');
 
 require('dotenv').config();
 const { BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
@@ -40,9 +42,9 @@ function parseColor(hexColor) {
 
 const db = new sqlite3.Database('./db/datenbank.sqlite', (sqliteError) => {
   if (sqliteError) {
-    console.error('[ERROR] | » Fehler bei der Verbindung zur SQLite-Datenbank:', sqliteError);
+    console.error(clc.red('[ERROR] | » Fehler bei der Verbindung zur SQLite-Datenbank:', sqliteError));
   } else {
-    console.log('[INFO] | » Die Verbindung zur SQLite-Datenbank wurde erfolgreich hergestellt.');
+    console.log(clc.green('[INFO] | » Die Verbindung zur SQLite-Datenbank wurde erfolgreich hergestellt.'));
 
     const createTableQuery = `CREATE TABLE IF NOT EXISTS file_data (
       id INTEGER PRIMARY KEY,
@@ -58,9 +60,9 @@ const db = new sqlite3.Database('./db/datenbank.sqlite', (sqliteError) => {
 
     db.run(createTableQuery, (error) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Erstellen der Tabelle "file_data":', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Erstellen der Tabelle "file_data":', error));
       } else {
-        console.log('[INFO] | » Tabelle "file_data" erfolgreich erstellt oder bereits vorhanden.');
+        console.log(clc.yellow('[INFO] | » Tabelle "file_data" erfolgreich erstellt oder bereits vorhanden.'));
       }
     });
   }
@@ -153,7 +155,7 @@ const createDirectoriesForAllUsers = async () => {
       fs.mkdirSync(userPreviewPath, { recursive: true });
     });
 
-    console.log(clc.green('[INFO] | » Alle Benutzerordner wurden erstellt.'));
+    console.log(clc.yellow('[INFO] | » Alle Benutzerordner wurden erstellt oder bereits vorhanden.'));
     const webhookData = {
       embeds: [
         {
@@ -261,7 +263,7 @@ const getUserByToken = (token) => {
 
     db.get(query, values, (error, row) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Abrufen des Benutzers aus der Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Abrufen des Benutzers aus der Datenbank:', error));
         reject(error);
       } else {
         resolve(row);
@@ -522,20 +524,18 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
     delete: `${process.env.BASE_URL}/delete/${filename}`,
   });
 
-  const imagePath = `./uploads/${req.TokenUsername}/${filename}`;
-
   const COLOR_COUNT = 256;
   const QUALITY = 3;
 
-  const extractDominantColor = (imagePath) => {
+  const extractDominantColor = (filePath) => {
     return new Promise((resolve, reject) => {
-      const imageMimeType = getMimeType(imagePath);
+      const imageMimeType = getMimeType(filePath);
       if (!isImageMimeType(imageMimeType)) {
         resolve('#ffffff');
         return;
       }
 
-      Vibrant.from(imagePath)
+      Vibrant.from(filePath)
         .maxColorCount(COLOR_COUNT)
         .quality(QUALITY)
         .getPalette()
@@ -564,7 +564,7 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
 
 let dominantColor;
 if (USE_DOMINANT_COLOR === true) {
-  dominantColor = await extractDominantColor(imagePath);
+  dominantColor = await extractDominantColor(filePath);
 } else {
   dominantColor = DOMINANT_COLOR_STATIC;
 }
@@ -604,18 +604,19 @@ if (USE_DOMINANT_COLOR === true) {
 
   function getVideoResolution(filePath) {
     return new Promise((resolve, reject) => {
-      if (!isVideoMimeType(getMimeType(filePath))) {
-        reject(new Error('Keine Videodatei'));
-      } else {
-        ffmpeg.ffprobe(filePath, (err, metadata) => {
-          if (err) {
-            reject(err);
+      ffprobe(filePath, { path: ffprobeStatic.path }, (err, info) => {
+        if (err) {
+          reject(err);
+        } else {
+          const videoStream = info.streams.find(stream => stream.codec_type === 'video');
+          if (!videoStream) {
+            reject(new Error(clc.red('[ERROR] | » Kein Video-Stream gefunden!')));
           } else {
-            const { width, height } = metadata.streams[0];
+            const { width, height } = videoStream;
             resolve({ width, height });
           }
-        });
-      }
+        }
+      });
     });
   }
 
@@ -633,7 +634,7 @@ if (USE_DOMINANT_COLOR === true) {
   
     db.run(query, values, async (error) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Speichern der Dateidaten in die Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Speichern der Dateidaten in die Datenbank:', error));
   
         const webhookData = {
           embeds: [
@@ -650,11 +651,11 @@ if (USE_DOMINANT_COLOR === true) {
           try {
             await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           } catch (error) {
-            console.error('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error);
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
           }
         }
       } else {
-        console.log('[INFO] | » Dateidaten erfolgreich in die Datenbank gespeichert.');
+        console.log(clc.green('[INFO] | » Dateidaten erfolgreich in die Datenbank gespeichert.'));
   
         const webhookData = {
           embeds: [
@@ -671,7 +672,7 @@ if (USE_DOMINANT_COLOR === true) {
           try {
             await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           } catch (error) {
-            console.error('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error);
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
           }
         }
       }
@@ -791,7 +792,7 @@ const getFileDataFromDatabase = async (username, filename) => {
 
     db.all(query, values, async (error, rows) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error));
 
         const webhookData = {
           embeds: [
@@ -808,7 +809,7 @@ const getFileDataFromDatabase = async (username, filename) => {
           try {
             await axios.post(DISCORD_WEBHOOK_URL, webhookData);
           } catch (error) {
-            console.error('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error);
+            console.error(clc.red('[DISCORD > ERROR] | » Nachricht konnte nicht gesendet werden:', error));
           }
         }
         reject(error);
@@ -830,7 +831,7 @@ const getFileByFilename = async (filename) => {
 
     db.all(query, values, async (error, rows) => {
       if (error) {
-        console.error('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error);
+        console.error(clc.red('[ERROR] | » Fehler beim Abrufen der Dateidaten aus der Datenbank:', error));
         reject(error);
       } else {
         if (rows.length > 0) {

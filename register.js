@@ -4,10 +4,19 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const clc = require('cli-color');
 
 require('dotenv').config();
 const { JWT_TOKEN } = process.env;
 
+const DBfolderPath = './db';
+
+if (!fs.existsSync(DBfolderPath)) {
+    fs.mkdirSync(DBfolderPath);
+    console.log(clc.green('[INFO] | » Datenbank-Ordner wurde erstellt.'));
+} else {
+    console.log(clc.yellow('[INFO] | » Datenbank-Ordner existiert bereits.'));
+}
 const db = new sqlite3.Database('./db/datenbank.sqlite');
 
 const uploadsFolderPath = path.join(__dirname, 'uploads');
@@ -15,7 +24,7 @@ const uploadsFolderPath = path.join(__dirname, 'uploads');
 try {
   if (!fs.existsSync(uploadsFolderPath)) {
     fs.mkdirSync(uploadsFolderPath);
-    console.log('Uploads-Ordner wurde erstellt.');
+    console.log(clc.yellow('[INFO] | » Uploads-Ordner wurde erstellt oder bereits vorhanden.'));
   }
 
   db.serialize(() => {
@@ -31,7 +40,7 @@ try {
 
     db.run(createTableQuery);
 
-    console.log('Tabelle "users" erfolgreich erstellt oder bereits vorhanden.');
+    console.log(clc.yellow('[INFO] | » Tabelle "users" erfolgreich erstellt oder bereits vorhanden.'));
 
     const generateToken = (id, username, role) => {
       const payload = {
@@ -43,7 +52,7 @@ try {
       return token;
     };
 
-    console.log('\nBitte geben Sie die folgenden Informationen ein, um einen neuen Benutzer zu erstellen.\nNutze beim Passwort keine Sonderzeichen!\n');
+    console.log(clc.whiteBright('\nBitte geben Sie die folgenden Informationen ein, um einen neuen Benutzer zu erstellen.\nNutze beim Passwort keine Sonderzeichen!\n'));
 
     const username = readlineSync.question('Benutzername: ');
 
@@ -52,12 +61,12 @@ try {
 
     db.get(existingUserQuery, existingUserValues, (err, existingUser) => {
       if (err) {
-        console.error('\nFehler beim Überprüfen des Benutzernamens:', err);
+        console.error(clc.red('\n[ERROR] | » Fehler beim Überprüfen des Benutzernamens:', err));
         return;
       }
 
       if (existingUser) {
-        console.log('\nDieser Benutzername ist bereits vergeben.\nBitte versuche es mit einem anderen Benutzernamen.\n');
+        console.log(clc.red('\nDieser Benutzername ist bereits vergeben.\nBitte versuche es mit einem anderen Benutzernamen.\n'));
       } else {
         const password = readlineSync.question('Passwort: ', { hideEchoBack: true });
         const isAdmin = readlineSync.question('Ist der Benutzer ein Administrator? (Ja/Nein): ');
@@ -71,18 +80,18 @@ try {
 
         db.run(insertUserQuery, insertUserValues, (err) => {
           if (err) {
-            console.error('\nFehler beim Einfügen des Benutzers:', err);
+            console.error(clc.red('\n[ERROR] | » Fehler beim Einfügen des Benutzers:', err));
             return;
           }
 
           const userFolderPath = path.join(__dirname, 'uploads', username);
           fs.mkdirSync(userFolderPath);
 
-          console.log('\nBenutzer erstellt!\nDein Login-Token lautet: ' + token + '\n');
+          console.log(clc.whiteBright('\nBenutzer erstellt!\nDein Login-Token lautet: ' + token + '\n'));
         });
       }
     });
   });
 } catch (error) {
-  console.error('Fehler:', error);
+  console.error(clc.red('[ERROR] | » Fehler:', error));
 }
