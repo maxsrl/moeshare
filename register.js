@@ -1,45 +1,46 @@
 const bcrypt = require('bcrypt');
 const readlineSync = require('readline-sync');
 const jwt = require('jsonwebtoken');
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const sqlite3 = require('sqlite3').verbose();
+const clc = require('cli-color');
 
 require('dotenv').config();
-const { JWT_TOKEN, DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE } = process.env;
+const { JWT_TOKEN } = process.env;
+
+const DBfolderPath = './db';
+
+if (!fs.existsSync(DBfolderPath)) {
+    fs.mkdirSync(DBfolderPath);
+    console.log(clc.green('[INFO] | » Datenbank-Ordner wurde erstellt.'));
+} else {
+    console.log(clc.yellow('[INFO] | » Datenbank-Ordner existiert bereits.'));
+}
+const db = new sqlite3.Database('./db/datenbank.sqlite');
 
 const uploadsFolderPath = path.join(__dirname, 'uploads');
 
-(async () => {
-  try {
-    if (!await fs.stat(uploadsFolderPath).catch(() => null)) {
-      await fs.mkdir(uploadsFolderPath);
-      console.log('Uploads-Ordner wurde erstellt.');
-    }
+try {
+  if (!fs.existsSync(uploadsFolderPath)) {
+    fs.mkdirSync(uploadsFolderPath);
+    console.log(clc.yellow('[INFO] | » Uploads-Ordner wurde erstellt oder bereits vorhanden.'));
+  }
 
-    const pgClient = new Client({
-      user: DATABASE_USER,
-      host: DATABASE_HOST,
-      database: DATABASE_DATABASE,
-      password: DATABASE_PASSWORD,
-      port: DATABASE_PORT
-    });
-
-    await pgClient.connect();
-
+  db.serialize(() => {
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        token VARCHAR(255) NOT NULL,
-        role VARCHAR(255) NOT NULL DEFAULT 'mitglied'
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        password TEXT NOT NULL,
+        token TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'mitglied'
       )
     `;
 
-    await pgClient.query(createTableQuery);
+    db.run(createTableQuery);
 
-    console.log('Tabelle "users" erfolgreich erstellt oder bereits vorhanden.');
+    console.log(clc.yellow('[INFO] | » Tabelle "users" erfolgreich erstellt oder bereits vorhanden.'));
 
     const generateToken = (id, username, role) => {
       const payload = {
@@ -51,35 +52,46 @@ const uploadsFolderPath = path.join(__dirname, 'uploads');
       return token;
     };
 
-    console.log('\nBitte geben Sie die folgenden Informationen ein, um einen neuen Benutzer zu erstellen.\nNutze beim Passwort keine Sonderzeichen!\n');
+    console.log(clc.whiteBright('\nBitte geben Sie die folgenden Informationen ein, um einen neuen Benutzer zu erstellen.\nNutze beim Passwort keine Sonderzeichen!\n'));
 
     const username = readlineSync.question('Benutzername: ');
-    const password = readlineSync.question('Passwort: ', { hideEchoBack: true });
-    const isAdmin = readlineSync.question('Ist der Benutzer ein Administrator? (Ja/Nein): ');
 
-    const existingUserQuery = 'SELECT * FROM users WHERE username = $1';
+    const existingUserQuery = 'SELECT * FROM users WHERE username = ?';
     const existingUserValues = [username];
-    const { rows: existingUsers } = await pgClient.query(existingUserQuery, existingUserValues);
 
-    if (existingUsers.length > 0) {
-      console.log('\nDieser Benutzername ist bereits vergeben.\nBitte versuche es mit einem anderen Benutzernamen.\n');
-    } else {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const role = isAdmin.toLowerCase() === 'ja' ? 'admin' : 'mitglied';
-      const token = generateToken(1, username, role);
+    db.get(existingUserQuery, existingUserValues, (err, existingUser) => {
+      if (err) {
+        console.error(clc.red('\n[ERROR] | » Fehler beim Überprüfen des Benutzernamens:', err));
+        return;
+      }
 
-      const insertUserQuery = 'INSERT INTO users (username, password, token, role) VALUES ($1, $2, $3, $4)';
-      const insertUserValues = [username, hashedPassword, token, role];
-      await pgClient.query(insertUserQuery, insertUserValues);
+      if (existingUser) {
+        console.log(clc.red('\nDieser Benutzername ist bereits vergeben.\nBitte versuche es mit einem anderen Benutzernamen.\n'));
+      } else {
+        const password = readlineSync.question('Passwort: ', { hideEchoBack: true });
+        const isAdmin = readlineSync.question('Ist der Benutzer ein Administrator? (Ja/Nein): ');
 
-      const userFolderPath = path.join(__dirname, 'uploads', username);
-      await fs.mkdir(userFolderPath);
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        const role = isAdmin.toLowerCase() === 'ja' ? 'admin' : 'mitglied';
+        const token = generateToken(1, username, role);
 
-      console.log('\nBenutzer erstellt!\nDein Login-Token lautet: ' + token + '\n');
-    }
+        const insertUserQuery = 'INSERT INTO users (username, password, token, role) VALUES (?, ?, ?, ?)';
+        const insertUserValues = [username, hashedPassword, token, role];
 
-    await pgClient.end();
-  } catch (error) {
-    console.error('Fehler:', error);
-  }
-})();
+        db.run(insertUserQuery, insertUserValues, (err) => {
+          if (err) {
+            console.error(clc.red('\n[ERROR] | » Fehler beim Einfügen des Benutzers:', err));
+            return;
+          }
+
+          const userFolderPath = path.join(__dirname, 'uploads', username);
+          fs.mkdirSync(userFolderPath);
+
+          console.log(clc.whiteBright('\nBenutzer erstellt!\nDein Login-Token lautet: ' + token + '\n'));
+        });
+      }
+    });
+  });
+} catch (error) {
+  console.error(clc.red('[ERROR] | » Fehler:', error));
+}

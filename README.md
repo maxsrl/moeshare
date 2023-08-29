@@ -10,12 +10,14 @@
 
 🛑 Wenn du den Uploader bereits Installiert hast, mache eine [Migration], da er nun SQLite nutzt. Dies macht mehr Sinn für solch ein Projekt.
 
+
 [Migration]: https://github.com/MaximilianGT500/Uploader/blob/main/MIGRATION.md
 [GitHub Lizenz]: https://img.shields.io/github/license/maximiliangt500/uploader?color=278c42&style=for-the-badge
 [GitHub Letze Änderung]: https://img.shields.io/github/last-commit/maximiliangt500/uploader?color=278c42&label=Letze%20Änderung&style=for-the-badge
 [Docker Pulls]: https://img.shields.io/docker/pulls/maximiliangt500/uploader?color=278c42&label=Docker%20Pulls&style=for-the-badge
 [GitHub Issues]: https://img.shields.io/github/issues/maximiliangt500/uploader?color=278c42&label=Issues&style=for-the-badge
 [GitHub Sterne]: https://img.shields.io/github/stars/maximiliangt500/uploader?color=278c42&label=Sterne&style=for-the-badge
+
 
 Dies ist ein einfacher ShareX-Uploader, der auf Node.js und SQLite basiert. Der Uploader ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
 
@@ -64,12 +66,13 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
    cd ~ && apt --assume-yes install curl && curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt --assume-yes install nodejs
    ```
 
-2. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
-3. Passe nun die `example.env` an.
-4. Nenne nun die `example.env` zu `.env` um.
-5. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
-6. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
-7. Führe `npm start` aus, um den Uploader zu starten.
+3. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
+4. Passe nun die `example.env` an.
+5. Nenne nun die `example.env` zu `.env` um.
+6. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
+7. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
+8. Führe `npm start` aus, um den Uploader zu starten.
+
 
 </details>
 
@@ -93,13 +96,14 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
    cd ~ && apt --assume-yes install curl && curl -sL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh && sudo bash nodesource_setup.sh && sudo apt --assume-yes install nodejs
    ```
 
-2. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
-3. Passe nun die `example.env` an.
-4. Nenne nun die `example.env` zu `.env` um.
-5. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
-6. Führe `npm i pm2 -g` aus, um PM2 zu installieren.
-7. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
-8. Führe `pm2 start index.js -i max --name Uploader` aus, um den Uploader zu starten und ihn zu Clustern mit allen Verfügbaren Threads.
+3. Klone dieses Repo mit `git clone https://github.com/MaximilianGT500/Uploader.git && cd Uploader/`.
+4. Passe nun die `example.env` an.
+5. Nenne nun die `example.env` zu `.env` um.
+6. Führe `npm i` aus, um die benötigten Abhängigkeiten zu installieren.
+7. Führe `npm i pm2 -g` aus, um PM2 zu installieren.
+8. Führe `npm run register` aus, um den ersten Nutzer zu erstellen.
+9. Führe `pm2 start index.js -i max --name Uploader` aus, um den Uploader zu starten und ihn zu Clustern mit allen Verfügbaren Threads.
+
 
 </details>
 
@@ -144,8 +148,11 @@ Derzeit wird die Installation mit NodeJS oder Docker unterstützt.
    ```
 
 2. Lade dir die [docker-compose.yml] auf dein Server herunter
+
 3. Bearbeite die `docker-compose.yml` nach deinen Vorstellungen.
 4. Führe `docker compose up -d && docker compose exec uploader npm run register && docker compose restart` aus, um den ersten Nutzer zu erstellen und um den Uploader zu starten.
+
+
 
 [docker-compose.yml]: https://raw.githubusercontent.com/MaximilianGT500/Uploader/main/docker-compose.yml
 

@@ -8,3 +8,6 @@ README.md
 .gitignore
 .gitattributes
 docker-compose.yml
+docker-compose.migrieren.yml
+MIGRATION.md
+sqlite-anpassung.js
