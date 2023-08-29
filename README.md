@@ -1,8 +1,6 @@
 # Uploader
 ⚠️ Dies ist noch eine frühe und aktive Entwicklung. Es kann zu Fehlern kommen.
 
-🛑 Die MariaDB-Version ist veraltet. Update den Uploader nichtmehr, wenn du MariaDB nutzten möchtest. Lade alle Dateien herunter und lade sie wieder hoch, bevor du auf einer neuen Version updaten möchtest.
-
 🛑 Wenn du den Uploader bereits Installiert hast, mache eine [Migration], da er nun SQLite nutzt. Dies macht mehr Sinn für solch ein Projekt.
 
 [Migration]: https://github.com/MaximilianGT500/Uploader/blob/main/MIGRATION.md
