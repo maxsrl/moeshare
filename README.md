@@ -1,9 +1,20 @@
 # Uploader
+![GitHub Lizenz]
+![GitHub Letze Änderung]
+![Docker Pulls]
+![GitHub Issues]
+![GitHub Sterne]
+
 ⚠️ Dies ist noch eine frühe und aktive Entwicklung. Es kann zu Fehlern kommen.
 
 🛑 Wenn du den Uploader bereits Installiert hast, mache eine [Migration], da er nun SQLite nutzt. Dies macht mehr Sinn für solch ein Projekt.
 
 [Migration]: https://github.com/MaximilianGT500/Uploader/blob/main/MIGRATION.md
+[GitHub Lizenz]: https://img.shields.io/github/license/maximiliangt500/uploader?color=278c42&style=for-the-badge
+[GitHub Letze Änderung]: https://img.shields.io/github/last-commit/maximiliangt500/uploader?color=278c42&label=Letze%20Änderung&style=for-the-badge
+[Docker Pulls]: https://img.shields.io/docker/pulls/maximiliangt500/uploader?color=278c42&label=Docker%20Pulls&style=for-the-badge
+[GitHub Issues]: https://img.shields.io/github/issues/maximiliangt500/uploader?color=278c42&label=Issues&style=for-the-badge
+[GitHub Sterne]: https://img.shields.io/github/stars/maximiliangt500/uploader?color=278c42&label=Sterne&style=for-the-badge
 
 Dies ist ein einfacher ShareX-Uploader, der auf Node.js und SQLite basiert. Der Uploader ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
 
