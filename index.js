@@ -159,7 +159,7 @@ const formattedTotalMemory = formatMemory(totalMemory);
 console.log(clc.whiteBright(`\n`))
 console.log(clc.bold.whiteBright(`-----------------------------------------------------------------------------------------------------`))
 console.log(clc.bold.whiteBright(`${greeting}, Nutzer.`))
-console.log(clc.bold.whiteBright(`Vielen Dank, dass du MoeShare nutzt!\n`))
+console.log(clc.bold.whiteBright(`Vielen Dank, dass du MoeShare (${localVersion.version}) nutzt!\n`))
 console.log(clc.bold.whiteBright(`Hier kannst du die aktuellen Einstellungen sehen:`))
 console.log(clc.whiteBright(`  - Diese Farbe wird anstelle der Dominanten Farbe genutzt: ${DOMINANT_COLOR_STATIC}`))
 console.log(clc.whiteBright(`  - Wird Angewand, wenn die Datei kein Bild ist: ${BOX_SHADOW_COLOR}\n`))
@@ -513,6 +513,15 @@ const notFoundPage = `<!DOCTYPE HTML>
             color: #343540;
             text-align: center;
             }
+            .version {
+              position: absolute;
+              top: 10px;
+              left: 10px;
+              font-size: 15px;
+              font-family: Arial, sans-serif;
+              font-weight: bold;
+              color: #343540;
+              }
             a {
             color: #343540;
             }
@@ -525,8 +534,11 @@ const notFoundPage = `<!DOCTYPE HTML>
             <button class="button" type="button" onclick="javascript:history.back()">Zurück</button>
         </div>
         <div class="copyright">
-            ${COPYRIGHT_TEXT}
+          ${COPYRIGHT_TEXT}
         </div>
+        <div class="version">
+          V. ${localVersion.version}</br>
+      </div>
     </body>
 </html>`;
 
@@ -1122,6 +1134,15 @@ app.get('/view/:filename', async (req, res) => {
             text-align: center;
             margin-top: 65px;
             }
+            .version {
+              position: absolute;
+              top: 10px;
+              left: 10px;
+              font-size: 15px;
+              font-family: Arial, sans-serif;
+              font-weight: bold;
+              color: #343540;
+            }
             .copyright {
             position: absolute;
             bottom: 10px;
@@ -1176,6 +1197,9 @@ app.get('/view/:filename', async (req, res) => {
         </div>
         <div class="copyright">
             ${COPYRIGHT_TEXT}
+        </div>
+        <div class="version">
+            v.${localVersion.version}</br>
         </div>
     </body>
 </html>`;
