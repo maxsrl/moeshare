@@ -1,0 +1,16 @@
+﻿{
+  "Version": "15.0.0",
+  "Name": "MoeShare",
+  "DestinationType": "ImageUploader, TextUploader, FileUploader",
+  "RequestMethod": "POST",
+  "RequestURL": "https://example.com/upload",
+  "Headers": {
+    "Authorization": "Dein Token"
+  },
+  "Body": "MultipartFormData",
+  "FileFormName": "file",
+  "URL": "{json:view}",
+  "ThumbnailURL": "{json:preview}",
+  "DeletionURL": "{json:delete}",
+  "ErrorMessage": "{response}"
+}

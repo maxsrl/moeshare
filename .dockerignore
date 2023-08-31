@@ -1,0 +1,13 @@
+node_modules/
+.git/
+config_flameshot.sh
+config.sxcu
+example.env
+LICENSE
+README.md
+.gitignore
+.gitattributes
+docker-compose.yml
+docker-compose.migrieren.yml
+MIGRATION.md
+sqlite-anpassung.js
