@@ -1,5 +1,5 @@
 <div align="center">
-  <h1><a href="https://github.com/maxsrl/moeshare" target="_blank"><img height="300" alt="LOGO" src="https://moeshare.de/logo.png"></a></h1>
+  <h1><a href="https://github.com/maxsrl/moeshare" target="_blank"><img height="300" alt="LOGO" src="https://moeshare.de/assets/img/logo.png"></a></h1>
 </div>
 
 ![GitHub Lizenz]
@@ -238,7 +238,7 @@ Andere Dinge zu beachten:
 | **`LOGS`**                          | Gibt an, ob Logs an den Discord-Webhook gesendet werden sollen.                                                                                                                                    | `false`                                      | ❌       |
 | **`ALLOW_METRICS`**                 | Legt fest, ob Fehler zur Fehlerbehebung an Sentry gesendet werden dürfen (wird empfohlen, um zur Verbesserung der Anwendung beizutragen!).                                                         | `true`                                       | ❌       |
 | **`SITE_TITLE`**                    | Definiert den HTML-Metatag "title".                                                                                                                                                                | `MoeShare`                                   | ❌       |
-| **`SITE_FAVICON`**                  | Pfad zur .png-Datei oder URL einer .png-Datei für das Favicon.                                                                                                                                     | `https://moeshare.de/logo.png`               | ❌       |
+| **`SITE_FAVICON`**                  | Pfad zur .png-Datei oder URL einer .png-Datei für das Favicon.                                                                                                                                     | `https://moeshare.de/assets/img/logo.png`               | ❌       |
 | **`OG_TITLE`**                      | Meta-Tag og:title.                                                                                                                                                                                 | `EXAMPLE`                                    | ❌       |
 | **`OG_DESCRIPTION`**                | Meta-Tag og:description.                                                                                                                                                                           | `EXAMPLE`                                    | ❌       |
 | **`THEME_COLOR`**                   | Meta-Tag theme-color - Wenn &dominantColor als Theme-Farbe verwendet wird, wird das Embed in der dominanten Farbe der Datei angezeigt.                                                             | `&dominantColor`                             | ❌       |
