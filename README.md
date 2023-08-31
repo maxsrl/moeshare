@@ -21,7 +21,7 @@
 [GitHub Sterne]: https://img.shields.io/github/stars/maxsrl/moeshare?color=278c42&label=Sterne&style=for-the-badge
 
 
-Dies ist ein einfacher ShareX-Uploader, der auf Node.js und SQLite basiert. MoeShare ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
+Dies ist eine einfache Upload-API, welche auf Node.js und SQLite basiert. MoeShare ermöglicht das Hochladen und generiert verschiedene Links für den Zugriff auf die hochgeladenen Dateien.
 
 ## Developer
 
