@@ -1,12 +1,13 @@
-node_modules/
-.git/
+node_modules
+.git
+.github
+.gitignore
+.gitattributes
 config_flameshot.sh
 config.sxcu
 example.env
 LICENSE
 README.md
-.gitignore
-.gitattributes
 docker-compose.yml
 docker-compose.migrieren.yml
 MIGRATION.md
