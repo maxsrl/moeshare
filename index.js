@@ -20,6 +20,7 @@ const ffprobeStatic = require('ffprobe-static');
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 const hls = require('hls-server');
+const nocache = require('nocache');
 
 require('dotenv').config();
 const { BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
@@ -968,6 +969,7 @@ const getFileByFilename = async (filename) => {
   });
 };
 
+app.use(nocache());
 app.get('/view/:filename', async (req, res) => {
   const filename = req.params.filename;
 
