@@ -176,6 +176,7 @@ console.log(clc.whiteBright(`  - Sollen die Metadaten der Datei gelöscht werden
 console.log(clc.whiteBright(`  - Soll ein Preview erstellt und genutzt werden? ${USE_PREVIEW  ? "✅" : "❌"}`))
 console.log(clc.whiteBright(`  - Sollen Logs an die Discord-Webhook gesendet werden? ${process.env.LOGS  ? "✅" : "❌"}`))
 console.log(clc.whiteBright(`  - Dürfen Fehler an Sentry für die Fehlerbehebung gesendet werden? ${process.env.ALLOW_METRICS  ? "✅" : "❌"}\n`))
+console.log(clc.whiteBright(`  - Soll HLS für das Videostreaming verwendet werden? ${process.env.USE_HLS  ? "✅" : "❌"}\n`))
 console.log(clc.bold.whiteBright(`Systemeigenschaften:`))
 console.log(clc.whiteBright(`  - Hostname: ${os.hostname()}`))
 console.log(clc.whiteBright(`  - Kernel-Typ: ${os.type()}`))
