@@ -17,6 +17,9 @@ const os = require('os');
 const clc = require('cli-color');
 const ffprobe = require('ffprobe');
 const ffprobeStatic = require('ffprobe-static');
+const ffmpeg = require("fluent-ffmpeg");
+const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
+const hls = require('hls-server');
 
 require('dotenv').config();
 const { BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
@@ -26,6 +29,7 @@ const IMAGE_FORMATS = process.env.IMAGE_FORMATS.split(',');
 const USE_DOMINANT_COLOR = process.env.USE_DOMINANT_COLOR === 'true';
 const REMOVE_METADATA = process.env.REMOVE_METADATA === 'true';
 const USE_PREVIEW = process.env.USE_PREVIEW === 'true';
+const USE_HLS = process.env.USE_HLS === 'true';
 
 const app = express();
 app.use(express.json());
@@ -194,6 +198,44 @@ const createDirectoriesForAllUsers = async () => {
     
       const userPreviewPath = path.join(uploadPath, 'preview');
       fs.mkdirSync(userPreviewPath, { recursive: true });
+
+      const m3u8Path = path.join(uploadPath, 'm3u8');
+      fs.mkdirSync(m3u8Path, { recursive: true });
+
+      const prefix = 'conversionStarted-';
+      fs.readdir(m3u8Path, (err, files) => {
+        if (err) {
+          console.error(clc.red('[INFO > Cleanup] | » Fehler beim Löschen der Unbeendete Aufgabe:', err));
+          return;
+        }
+      
+        for (const file of files) {
+          if (file.startsWith(prefix)) {
+            const baseName = file.slice(prefix.length);
+            const matchingFiles = files.filter((f) => f.startsWith(baseName));
+            
+            matchingFiles.forEach((matchingFile) => {
+              const filePath = path.join(m3u8Path, matchingFile);
+              fs.unlink(filePath, (unlinkErr) => {
+                if (unlinkErr) {
+                  console.error(clc.red('[INFO > Cleanup] | » Fehler beim Löschen der Unbeendete Aufgabe:', filePathStarted, unlinkErr));
+                } else {
+                  console.log(clc.green('[INFO > Cleanup] | » Unbeendete Aufgabe wird gelöscht:', filePathStarted));
+                }
+              });
+            });
+            const filePathStarted = path.join(`${m3u8Path}/conversionStarted-${baseName}`);
+            fs.unlink(filePathStarted, (unlinkErr) => {
+              if (unlinkErr) {
+                console.error(clc.red('[INFO > Cleanup] | » Fehler beim Löschen der Unbeendete Aufgabe:', filePathStarted, unlinkErr));
+
+              } else {
+                console.log(clc.green('[INFO > Cleanup] | » Unbeendete Aufgabe wird gelöscht:', filePathStarted));
+              }
+            });
+          }
+        }
+      });
     });
 
     console.log(clc.yellow('[INFO] | » Alle Benutzerordner wurden erstellt oder bereits vorhanden.'));
@@ -551,6 +593,8 @@ app.post('/upload', authenticate, upload, TokenUsername, async (req, res) => {
   const userUploadsPath = path.join(__dirname, 'uploads', req.TokenUsername);
   const filePath = path.join(userUploadsPath, filename);
   const previewPath = path.join(userUploadsPath, 'preview', filename);
+  const m3u8Path = path.join(userUploadsPath, 'm3u8', filename.split('.')[0]);
+  const m3u8PathWithoutFilename = path.join(userUploadsPath, 'm3u8');
 
   if (USE_PREVIEW && IMAGE_FORMATS.some(format => filename.endsWith(format))) {
     await sharp(filePath)
@@ -632,6 +676,7 @@ if (USE_DOMINANT_COLOR === true) {
   const isVideo = VIDEO_FORMATS.some(format => filename.endsWith(format));
 
   let resolution;
+  
   if (isImage) {
     try {
       resolution = await getImageResolution(filePath);
@@ -648,6 +693,37 @@ if (USE_DOMINANT_COLOR === true) {
     }
   } else {
     resolution = { width: 0, height: 0 };
+  }
+  
+  if (isVideo && USE_HLS) {
+    ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+    fs.writeFileSync(`${m3u8PathWithoutFilename}/conversionStarted-${filename.split('.')[0]}`, '');
+
+    const ffmpegProcess = ffmpeg(filePath, { timeout: 432000 })
+      .addOptions([
+        '-profile:v baseline',
+        '-level 3.0',
+        '-start_number 0',
+        '-hls_time 10',
+        '-hls_list_size 0',
+        '-f hls',
+      ])
+      .output(m3u8Path + '.m3u8')
+      .on('end', () => {
+        console.error(clc.green('[INFO] | » Video wurde erfolgreich umgewandelt.'));
+        fs.unlink(`${m3u8PathWithoutFilename}/conversionStarted-${filename.split('.')[0]}`, (err) => {
+          if (err) {
+            console.error(clc.red('[ERROR] | » Fehler beim Löschen der conversionStarted-Datei:', err));        
+          } else {}
+        });
+        fs.writeFileSync(`${m3u8PathWithoutFilename}/conversionComplete-${filename.split('.')[0]}`, '');
+      })
+      .on('error', (err, stdout, stderr) => {
+        console.error(clc.red('[ERROR] | » FFmpeg Fehler:', err));        
+        console.error(clc.red('[ERROR] | » FFmpeg STDERR:', stderr));
+      });
+    
+    ffmpegProcess.run();
   }
 
   function getVideoResolution(filePath) {
@@ -911,11 +987,31 @@ app.get('/view/:filename', async (req, res) => {
       let filename = req.params.filename;
       let filePath = path.join(__dirname, 'uploads', username, filename);
       let previewPath = path.join(__dirname, 'uploads', username, 'preview', filename);
+      let isConversionStartedFile = path.join(__dirname, 'uploads', username, 'm3u8', 'conversionStarted-' + filename.split('.')[0]);
+      let isConversionCompleteFile = path.join(__dirname, 'uploads', username, 'm3u8', 'conversionComplete-' + filename.split('.')[0]);
+      let isConversionStarted = false;
+      let isConversionComplete = false;
 
       fs.access(filePath, fs.constants.F_OK, (error) => {
         if (error) {
           return res.status(404).send(notFoundPage);
         }
+
+        fs.access(isConversionStartedFile, fs.constants.F_OK, (err) => {
+          if (err) {
+            isConversionStarted = false;
+          } else {
+            isConversionStarted = true;
+          }
+        });
+
+        fs.access(isConversionCompleteFile, fs.constants.F_OK, (err) => {
+          if (err) {
+            isConversionComplete = false;
+          } else {
+            isConversionComplete = true;
+          }
+        });
 
         getFileDataFromDatabase(username, filename)
           .then(fileData => {
@@ -941,7 +1037,44 @@ app.get('/view/:filename', async (req, res) => {
             const isImageWithGif = IMAGE_FORMATS.some(format => filename.endsWith(format));
             const isAudio = AUDIO_FORMATS.some(format => filename.endsWith(format));
             const isVideo = VIDEO_FORMATS.some(format => filename.endsWith(format));
+            
+            let videoHLSText = '';
 
+            if (USE_HLS && isConversionStarted) {
+              videoHLSText = `
+       <div class="hls-text">
+           Das Video wird derzeit noch Konvertiert.
+           </br>Fallback auf .mp4 wird genutzt.
+       </div>
+       </br>`;
+            } else if (isConversionComplete) {
+              videoHLSText = ``
+            } else {
+              videoHLSText = ``
+            }
+
+            let video = '';
+
+            if (isConversionComplete && USE_HLS) {
+              video = `
+             <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+              <video id="video" controls></video>
+              <script>
+                  var video = document.getElementById('video');
+                  var videoSrc = '/uploads/${username}/m3u8/${filename.split('.')[0]}.m3u8';
+                  if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = videoSrc;
+                  } else if (Hls.isSupported()) {
+                    var hls = new Hls();
+                    hls.loadSource(videoSrc);
+                    hls.attachMedia(video);
+                  }
+                </script>`;
+           } else {
+              video = `<video controls>
+              <source src="/uploads/${username}/${filename}" width=${fileData.resolution_width} height=${fileData.resolution_height}>
+              </video>`;
+            }
 
             let metaTag = '';
 
@@ -1143,6 +1276,16 @@ app.get('/view/:filename', async (req, res) => {
               font-weight: bold;
               color: #343540;
             }
+            .hls-text {
+              top: 30px
+              position: absolute;
+              font-size: 15px;
+              font-family: Arial, sans-serif;
+              font-weight: bold;
+              color: #343540;
+              text-align: center;
+
+            }
             .copyright {
             position: absolute;
             bottom: 10px;
@@ -1158,8 +1301,7 @@ app.get('/view/:filename', async (req, res) => {
         </style>
     </head>
     <body>
-        <h1 class="filename">${filename}</h1>
-        <br>
+        <h1 class="filename">${filename}</h1>${videoHLSText}
         <div class="file-container">
             ${
             isAudio
@@ -1169,11 +1311,7 @@ app.get('/view/:filename', async (req, res) => {
             </audio>
             `
             : isVideo
-            ? `
-            <video controls>
-                <source src="/uploads/${username}/${filename}" width=${fileData.resolution_width} height=${fileData.resolution_height}>
-            </video>
-            `
+            ? `${video}`
             : filename.endsWith('.gif')
             ? `<img src="/uploads/${username}/${filename}" alt="GIF" />`
             : isImage
@@ -1617,4 +1755,34 @@ app.get('/files', authenticate, TokenUsername, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(clc.green(`[INFO] | » Server gestartet auf Port: ${PORT}`)));
+const server = app.listen(PORT, () => console.log(clc.green(`[INFO] | » Server gestartet auf Port: ${PORT}`)));
+
+if (USE_HLS) {
+  new hls(server, {
+    provider: {
+      exists: (req, cb) => {
+        const ext = req.url.split('.').pop();
+
+        if (ext !== 'm3u8' && ext !== 'ts') {
+          return cb(null, true);
+        }
+
+        fs.access(__dirname + req.url, fs.constants.F_OK, function (err) {
+          if (err) {
+            console.log(clc.red('[ERROR -> HLS] | » Datei existiert nicht!'));
+            return cb(null, false);
+          }
+          cb(null, true);
+        });
+      },
+      getManifestStream: (req, cb) => {
+        const stream = fs.createReadStream(__dirname + req.url);
+        cb(null, stream);
+      },
+      getSegmentStream: (req, cb) => {
+        const stream = fs.createReadStream(__dirname + req.url);
+        cb(null, stream);
+      },
+    },
+  });
+} else{}
