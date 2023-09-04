@@ -712,7 +712,7 @@ if (USE_DOMINANT_COLOR === true) {
       ])
       .output(m3u8Path + '.m3u8')
       .on('end', () => {
-        console.error(clc.green('[INFO] | » Video wurde erfolgreich umgewandelt.'));
+        console.log(clc.green('[INFO] | » Video wurde erfolgreich umgewandelt.'));
         fs.unlink(`${m3u8PathWithoutFilename}/conversionStarted-${filename.split('.')[0]}`, (err) => {
           if (err) {
             console.error(clc.red('[ERROR] | » Fehler beim Löschen der conversionStarted-Datei:', err));        
