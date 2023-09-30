@@ -39,4 +39,5 @@ ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
     REDIRECT_URL=https://example.com
 
 RUN npm ci
+EXPOSE ${PORT}/tcp
 CMD ["node", "index.js"]
