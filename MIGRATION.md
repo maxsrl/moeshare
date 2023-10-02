@@ -1,3 +1,7 @@
+<div align="center">
+  <h1><a href="https://github.com/maxsrl/moeshare" target="_blank"><img height="300" alt="LOGO" src="https://moeshare.de/assets/img/logo.png"></a></h1>
+</div>
+
 # Migration der Datenbank
 
 ## Von PostgreSQL zu SQLite3
