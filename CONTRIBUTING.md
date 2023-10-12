@@ -22,10 +22,6 @@ Alle Arten von Beiträgen sind willkommen und werden geschätzt. Siehe das [Inha
 - [Verbesserungen vorschlagen](#verbesserungen-vorschlagen)
 - [Dein erster Code-Beitrag](#dein-erster-code-beitrag)
 - [Die Dokumentation verbessern](#die-dokumentation-verbessern)
-- [Styleguides](#styleguides)
-- [Commit-Nachrichten](#commit-nachrichten)
-- [Dem Projektteam beitreten](#dem-projektteam-beitreten)
-
 
 ## Verhaltenskodex
 
