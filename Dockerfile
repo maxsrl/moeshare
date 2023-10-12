@@ -24,6 +24,7 @@ ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
     OG_TITLE=EXAMPLE \
     OG_DESCRIPTION=EXAMPLE \
     THEME_COLOR=&dominantColor \
+    FONT_COLOR=#343540 \
     AUTHOR_URL=https://example.com \
     AUTHOR_NAME=EXAMPLE \
     PROVIDER_NAME=EXAMPLE.COM \

@@ -23,7 +23,7 @@ const hls = require('hls-server');
 const nocache = require('nocache');
 
 require('dotenv').config();
-const { BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
+const { BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, FONT_COLOR, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
 const AUDIO_FORMATS = process.env.AUDIO_FORMATS.split(',');
 const VIDEO_FORMATS = process.env.VIDEO_FORMATS.split(',');
 const IMAGE_FORMATS = process.env.IMAGE_FORMATS.split(',');
@@ -167,7 +167,8 @@ console.log(clc.bold.whiteBright(`${greeting}, Nutzer.`))
 console.log(clc.bold.whiteBright(`Vielen Dank, dass du MoeShare (${localVersion.version}) nutzt!\n`))
 console.log(clc.bold.whiteBright(`Hier kannst du die aktuellen Einstellungen sehen:`))
 console.log(clc.whiteBright(`  - Diese Farbe wird anstelle der Dominanten Farbe genutzt: ${DOMINANT_COLOR_STATIC}`))
-console.log(clc.whiteBright(`  - Wird Angewand, wenn die Datei kein Bild ist: ${BOX_SHADOW_COLOR}\n`))
+console.log(clc.whiteBright(`  - Wird Angewand, wenn die Datei kein Bild ist: ${BOX_SHADOW_COLOR}`))
+console.log(clc.whiteBright(`  - Schriftfarbe: ${FONT_COLOR}\n`))
 console.log(clc.whiteBright(`  - Erlaubte Audio-Formate:${AUDIO_FORMATS}`))
 console.log(clc.whiteBright(`  - Erlaubte Video-Formate: ${VIDEO_FORMATS}`))
 console.log(clc.whiteBright(`  - Erlaubte Bilder-Formate: ${IMAGE_FORMATS}\n`))
@@ -554,7 +555,7 @@ const notFoundPage = `<!DOCTYPE HTML>
             font-size: 15px;
             font-family: Arial, sans-serif;
             font-weight: bold;
-            color: #343540;
+            color: ${FONT_COLOR};
             text-align: center;
             }
             .version {
@@ -564,10 +565,10 @@ const notFoundPage = `<!DOCTYPE HTML>
               font-size: 15px;
               font-family: Arial, sans-serif;
               font-weight: bold;
-              color: #343540;
+              color: ${FONT_COLOR};
               }
             a {
-            color: #343540;
+            color: ${FONT_COLOR};
             }
         </style>
     </head>
@@ -1108,6 +1109,22 @@ app.get('/view/:filename', async (req, res) => {
             if (THEME_COLOR.includes('&dominantColor')) {
               const dominantColor = fileData ? fileData.dominant_color : null;
               themeColor = dominantColor;
+            } 
+            else if (THEME_COLOR.includes('&random')) {
+              function getRandomHexCode() {
+                const characters = "0123456789ABCDEF";
+                let hexCode = "#";
+              
+                for (let i = 0; i < 6; i++) {
+                  const randomIndex = Math.floor(Math.random() * characters.length);
+                  hexCode += characters.charAt(randomIndex);
+                }
+              
+                return hexCode;
+              }
+              
+              const randomHexCode = getRandomHexCode();
+              themeColor = randomHexCode;
             } else {
               themeColor = THEME_COLOR;
             }
@@ -1266,7 +1283,7 @@ app.get('/view/:filename', async (req, res) => {
             font-size: 20px;
             font-family: Arial, sans-serif;
             font-weight: bold;
-            color: #343540;
+            color: ${FONT_COLOR};
             text-align: center;
             margin-top: 65px;
             }
@@ -1277,7 +1294,7 @@ app.get('/view/:filename', async (req, res) => {
               font-size: 15px;
               font-family: Arial, sans-serif;
               font-weight: bold;
-              color: #343540;
+              color: ${FONT_COLOR};
             }
             .hls-text {
               top: 30px
@@ -1285,7 +1302,7 @@ app.get('/view/:filename', async (req, res) => {
               font-size: 15px;
               font-family: Arial, sans-serif;
               font-weight: bold;
-              color: #343540;
+              color: ${FONT_COLOR};
               text-align: center;
 
             }
@@ -1295,11 +1312,14 @@ app.get('/view/:filename', async (req, res) => {
             font-size: 15px;
             font-family: Arial, sans-serif;
             font-weight: bold;
-            color: #343540;
+            color: ${FONT_COLOR};
             text-align: center;
             }
             a {
-            color: #343540;
+            color: ${FONT_COLOR};
+            }
+            img:hover {
+              cursor: pointer;
             }
         </style>
     </head>
@@ -1316,14 +1336,14 @@ app.get('/view/:filename', async (req, res) => {
             : isVideo
             ? `${video}`
             : filename.endsWith('.gif')
-            ? `<img src="/uploads/${username}/${filename}" alt="GIF" />`
+            ? `<img onclick="window.open('/uploads/${username}/${filename}','_self')" src="/uploads/${username}/${filename}" alt="GIF" />`
             : isImage
             ? USE_PREVIEW
-            ? `<img src="/uploads/${username}/preview/${filename}" width=${fileData.resolution_width} height=${fileData.resolution_height} alt="Bild Preview" />`
-            : `<img src="/uploads/${username}/${filename}" width=${fileData.resolution_width} height=${fileData.resolution_height} alt="Bild" />`
+            ? `<img onclick="window.open('/uploads/${username}/${filename}','_self')" src="/uploads/${username}/preview/${filename}" width=${fileData.resolution_width} height=${fileData.resolution_height} alt="Bild Preview" />`
+            : `<img onclick="window.open('/uploads/${username}/${filename}','_self')" src="/uploads/${username}/${filename}" width=${fileData.resolution_width} height=${fileData.resolution_height} alt="Bild" />`
             : fs.existsSync(previewPath)
-            ? `<img src="/uploads/${username}/preview/${filename}" width=${fileData.resolution_width} height=${fileData.resolution_height} alt="Preview" />`
-            : `<img src="${BASE_URL}/assets/file.png" alt="Datei" />`
+            ? `<img onclick="window.open('/uploads/${username}/${filename}','_self')" src="/uploads/${username}/preview/${filename}" width=${fileData.resolution_width} height=${fileData.resolution_height} alt="Preview" />`
+            : `<img onclick="window.open('/uploads/${username}/${filename}','_self')" src="${BASE_URL}/assets/file.png" alt="Datei" />`
             }
         </div>
         <div class="button-container">
