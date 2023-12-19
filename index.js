@@ -22,7 +22,7 @@ const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 const hls = require('hls-server');
 const nocache = require('nocache');
 const cookieParser = require('cookie-parser');
-const ejs = require('ejs');
+const sanitize = require('sanitize');
 
 require('dotenv').config();
 const { BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, FONT_COLOR, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
@@ -33,7 +33,6 @@ const USE_DOMINANT_COLOR = process.env.USE_DOMINANT_COLOR === 'true';
 const REMOVE_METADATA = process.env.REMOVE_METADATA === 'true';
 const USE_PREVIEW = process.env.USE_PREVIEW === 'true';
 const USE_HLS = process.env.USE_HLS === 'true';
-const USE_DASHBOARD = process.env.USE_DASHBOARD === 'true';
 
 const app = express();
 app.use(express.json());
@@ -42,6 +41,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(sanitize.middleware);
 
 if (process.env.ALLOW_METRICS === 'true') {
   const Sentry = require("@sentry/node");
@@ -482,14 +482,16 @@ if (process.env.USE_DASHBOARD === 'true') {
   });
 
   app.post("/login", (req, res) => {
-    const token = req.body.token;
-
+    const token = req.bodyString('token'); // Sanitize the token as a string
+  
+    // Set the sanitized token in the "token" cookie
+    res.cookie("token", token);
+  
     db.get("SELECT * FROM users WHERE token = ?", [token], (err, row) => {
       if (err || !row) {
         return res.status(401).json({ message: "Ungültiger Token" });
       }
-
-      res.cookie("token", token);
+  
       res.redirect("/dashboard");
     });
   });
