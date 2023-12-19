@@ -19,6 +19,7 @@ ENV AUDIO_FORMATS=.mp3,.wav,.ogg,.aac,.flac \
     LOGS=false \
     ALLOW_METRICS=true \
     USE_HLS=true \
+    USE_DASHBOARD=true \
     SITE_TITLE=MoeShare \
     SITE_FAVICON=https://moeshare.de/assets/img/logo.png \
     OG_TITLE=EXAMPLE \

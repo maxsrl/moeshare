@@ -21,6 +21,8 @@ const ffmpeg = require("fluent-ffmpeg");
 const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 const hls = require('hls-server');
 const nocache = require('nocache');
+const cookieParser = require('cookie-parser');
+const ejs = require('ejs');
 
 require('dotenv').config();
 const { BASE_URL, PORT, JWT_TOKEN, SITE_TITLE, SITE_FAVICON, OG_TITLE, OG_DESCRIPTION, THEME_COLOR, FONT_COLOR, AUTHOR_URL, AUTHOR_NAME, PROVIDER_NAME, PROVIDER_URL, DOMINANT_COLOR_STATIC, BOX_SHADOW_COLOR, COPYRIGHT_TEXT, DISCORD_WEBHOOK_NAME, DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_SUCCESS_COLOR, DISCORD_WEBHOOK_ERROR_COLOR, REDIRECT_URL } = process.env
@@ -31,11 +33,15 @@ const USE_DOMINANT_COLOR = process.env.USE_DOMINANT_COLOR === 'true';
 const REMOVE_METADATA = process.env.REMOVE_METADATA === 'true';
 const USE_PREVIEW = process.env.USE_PREVIEW === 'true';
 const USE_HLS = process.env.USE_HLS === 'true';
+const USE_DASHBOARD = process.env.USE_DASHBOARD === 'true';
 
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 if (process.env.ALLOW_METRICS === 'true') {
   const Sentry = require("@sentry/node");
@@ -382,7 +388,7 @@ const authenticate = async (req, res, next) => {
 };
 
 const isAdmin = async (req, res, next) => {
-  const token = req.headers.authorization;
+  const token = req.cookies.token;
 
   if (!token) {
     return res.status(401).json({ error: 'Authentifizierung fehlgeschlagen' });
@@ -396,7 +402,7 @@ const isAdmin = async (req, res, next) => {
     }
 
     if (user.role !== 'admin') {
-      return res.status(403).json({ error: 'Zugriff verweigert' });
+      return res.redirect('/login');
     }
 
     next();
@@ -405,32 +411,6 @@ const isAdmin = async (req, res, next) => {
     return res.status(500).json({ error: 'Serverfehler bei der Authentifizierung' });
   }
 };
-
-const comparePasswords = (password, hash) => {
-  return bcrypt.compareSync(password, hash);
-};
-
-app.post('/login', async (req, res) => {
-  const username = req.body.username;
-  const password = req.body.password;
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Benutzername und Passwort erforderlich!' });
-  }
-
-  try {
-    const user = await getUserByUsername(username);
-
-    if (!user || !comparePasswords(password, user.password)) {
-      return res.status(400).json({ error: 'Ungültiger Benutzername oder Passwort!' });
-    }
-
-    res.json({ token: user.token, role: user.role });
-  } catch (error) {
-    console.error(clc.red('[ERROR] | » Fehler bei der Anmeldung:', error.message));
-    res.status(500).json({ error: 'Interner Serverfehler' });
-  }
-});
 
 const TokenUsername = async (req, res, next) => {
   const token = req.headers.authorization;
@@ -455,6 +435,262 @@ const TokenUsername = async (req, res, next) => {
     return res.status(500).json({ error: 'Serverfehler bei der Authentifizierung' });
   }
 };
+
+const checkToken = (req, res, next) => {
+  const token = req.cookies.token;
+
+  if (!token) {
+    return res.redirect('/login');
+  }
+
+  db.get('SELECT * FROM users WHERE token = ?', [token], (err, row) => {
+    if (err || !row) {
+      return res.redirect('/login');
+    }
+    req.username = row.username;
+    next();
+  });
+};
+
+if (process.env.USE_DASHBOARD === 'true') {
+  const comparePasswords = (password, hash) => {
+    return bcrypt.compareSync(password, hash);
+  };
+
+  const checkAuthentication = (req, res, next) => {
+    const token = req.cookies.token;
+
+    if (token) {
+      return res.redirect("/dashboard");
+    }
+    next();
+  };
+
+  app.get("/login", checkAuthentication, (req, res) => {
+    res.render("login", {
+      SITE_FAVICON,
+      OG_DESCRIPTION,
+      OG_TITLE,
+      SITE_TITLE,
+      localVersion,
+    });
+  });
+
+  app.get("/logout", (req, res) => {
+    res.clearCookie("token");
+    res.redirect("/login");
+  });
+
+  app.post("/login", (req, res) => {
+    const token = req.body.token;
+
+    db.get("SELECT * FROM users WHERE token = ?", [token], (err, row) => {
+      if (err || !row) {
+        return res.status(401).json({ message: "Ungültiger Token" });
+      }
+
+      res.cookie("token", token);
+      res.redirect("/dashboard");
+    });
+  });
+
+  app.get("/dashboard", checkToken, (req, res) => {
+    const username = req.username;
+    const directoryPath = `uploads/${username}/`;
+    const getUsersCountQuery = "SELECT COUNT(*) as userCount FROM users";
+
+    db.get(getUsersCountQuery, [], (err, row) => {
+      if (err) {
+        console.error(clc.red("[ERROR] | » Fehler bei der Abfrage der Nutzeranzahl:", err));
+        return res.status(500).json({ error: "Interner Serverfehler" });
+      }
+
+      const numberOfUsers = row.userCount;
+
+      fs.readdir(directoryPath, (err, files) => {
+        if (err) {
+          console.error(clc.red("\n[ERROR] | » Fehler beim Lesen des Verzeichnisses:", err));
+          return res.status(500).json({ error: "Interner Serverfehler" });
+        }
+
+        const fileNames = files.filter((file) =>
+          fs.statSync(`${directoryPath}/${file}`).isFile()
+        );
+
+        const numberOfFiles = fileNames.length;
+        let totalSpaceUsed = 0;
+
+        fileNames.forEach((file) => {
+          const stats = fs.statSync(`${directoryPath}/${file}`);
+          totalSpaceUsed += stats.size;
+        });
+
+        totalSpaceUsed = (totalSpaceUsed / (1024 * 1024)).toFixed(2);
+
+        res.render("dashboard", {
+          username,
+          files: fileNames,
+          greeting,
+          numberOfFiles,
+          totalSpaceUsed,
+          numberOfUsers,
+          BASE_URL,
+          SITE_FAVICON,
+          OG_DESCRIPTION,
+          OG_TITLE,
+          SITE_TITLE,
+          localVersion,
+        });
+      });
+    });
+  });
+
+  app.get("/api/data", checkToken, (req, res) => {
+    const username = req.username;
+    const directoryPath = `uploads/${username}/`;
+    const page = req.query.page || 1;
+    const itemsPerPage = 20;
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = page * itemsPerPage;
+
+    function listFileNames() {
+      const filesAndDirs = fs.readdirSync(directoryPath);
+      const fileNames = [];
+
+      for (const item of filesAndDirs) {
+        const itemPath = path.join(directoryPath, item);
+
+        if (fs.statSync(itemPath).isFile()) {
+          fileNames.push(item);
+        }
+      }
+
+      return fileNames.slice(startIndex, endIndex);
+    }
+
+    function countFilesWithoutFolders(directoryPath) {
+      const filesAndDirs = fs.readdirSync(directoryPath);
+      let fileCount = 0;
+
+      for (const item of filesAndDirs) {
+        const itemPath = path.join(directoryPath, item);
+
+        if (fs.statSync(itemPath).isFile()) {
+          fileCount++;
+        }
+      }
+
+      return fileCount;
+    }
+
+    const fileNames = listFileNames();
+    const totalItems = countFilesWithoutFolders(directoryPath);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const hasNextPage = page < totalPages;
+
+    res.json({
+      totalItems: totalItems,
+      itemsPerPage: itemsPerPage,
+      currentPage: page,
+      totalPages: totalPages,
+      hasNextPage: hasNextPage,
+      data: fileNames,
+    });
+  });
+
+  app.get("/admin", checkToken, isAdmin, (req, res) => {
+    const username = req.username;
+    const searchUserTerm = req.query.searchUser;
+    const searchFileTerm = req.query.searchFile;
+
+    let queryUser = "SELECT * FROM users";
+    let queryFile = "SELECT * FROM file_data";
+
+    if (searchUserTerm) {
+      queryUser += ` WHERE username LIKE '%${searchUserTerm}%'`;
+    }
+
+    if (searchFileTerm) {
+      queryFile += ` WHERE filename LIKE '%${searchFileTerm}%'`;
+    }
+
+    function getFolderSizeAndFileCount(folderPath) {
+      let folderSizeBytes = 0;
+      let numberOfFiles = 0;
+
+      const calculateSize = (itemPath) => {
+        const stats = fs.statSync(itemPath);
+        if (stats.isFile()) {
+          folderSizeBytes += stats.size;
+          numberOfFiles++;
+        } else if (stats.isDirectory()) {
+          const items = fs.readdirSync(itemPath);
+          items.forEach((item) => {
+            calculateSize(path.join(itemPath, item));
+          });
+        }
+      };
+
+      calculateSize(folderPath);
+
+      return { folderSizeBytes, numberOfFiles };
+    }
+
+    const folderPath = "./uploads";
+    const { folderSizeBytes, numberOfFiles } =
+      getFolderSizeAndFileCount(folderPath);
+    const folderSizeKb = folderSizeBytes / 1024;
+    const folderSizeMb = folderSizeKb / 1024;
+
+    const uploadDirectory = path.join(__dirname, "uploads");
+    fs.readdir(uploadDirectory, (err, files) => {
+      if (err) {
+        return res.status(500).send(err);
+      }
+
+      const getUsersCountQuery = "SELECT COUNT(*) as userCount FROM users";
+
+      db.get(getUsersCountQuery, [], (err, row) => {
+        if (err) {
+          console.error(clc.red("\n[ERROR] | » Fehler bei der Abfrage der Nutzeranzahl:", err));
+          return res.status(500).json({ error: "Interner Serverfehler" });
+        }
+
+        const numberOfUsers = row.userCount;
+
+        db.all(queryUser, (err, userRows) => {
+          if (err) {
+            return res.status(500).send(err);
+          }
+
+          db.all(queryFile, (err, fileRows) => {
+            if (err) {
+              return res.status(500).send(err);
+            }
+
+            res.render("admin", {
+              username,
+              users: userRows,
+              file_data: fileRows,
+              greeting,
+              numberOfFiles,
+              folderSizeMb,
+              numberOfUsers,
+              SITE_FAVICON,
+              OG_DESCRIPTION,
+              OG_TITLE,
+              SITE_TITLE,
+              localVersion,
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
 
 const notFoundPage = `<!DOCTYPE HTML>
 <html lang="de-DE">
@@ -1454,7 +1690,7 @@ app.get('/download/:filename', async (req, res) => {
   }
 });
 
-app.delete('/user/:username', isAdmin, TokenUsername, async (req, res) => {
+app.delete('/user/:username', checkToken, isAdmin, async (req, res) => {
   const username = req.params.username;
 
   try {
@@ -1489,7 +1725,7 @@ app.delete('/user/:username', isAdmin, TokenUsername, async (req, res) => {
       embeds: [
         {
           title: 'Ein Nutzer wurde gelöscht',
-          description: `Nutzername: **${req.user.username}`,
+          description: `Nutzername: **${username}`,
           color: parseColor(DISCORD_WEBHOOK_SUCCESS_COLOR),
         }
       ],
@@ -1669,7 +1905,7 @@ const deleteFile = async (username, filename) => {
   });
 };
 
-app.delete('/file/:username/:filename', authenticate, isAdmin, async (req, res) => {
+app.delete('/file/:username/:filename', checkToken, isAdmin, async (req, res) => {
   try {
     await deleteFile(req.params.username, req.params.filename);
     res.json({ success: true, message: 'Datei erfolgreich gelöscht' });

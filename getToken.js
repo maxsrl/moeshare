@@ -1,8 +1,12 @@
-const axios = require('axios');
 const readlineSync = require('readline-sync');
+const sqlite3 = require('sqlite3').verbose();
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const clc = require('cli-color');
 
 require('dotenv').config();
-const BASE_URL = process.env.BASE_URL;
+const { JWT_TOKEN } = process.env;
+const DATABASE_FILE = './db/datenbank.sqlite';
 
 if (process.env.ALLOW_METRICS === 'true') {
   const Sentry = require("@sentry/node");
@@ -18,22 +22,59 @@ if (process.env.ALLOW_METRICS === 'true') {
   });
 }
 
+const getTokenByUsername = (enteredUsername, enteredPassword, callback) => {
+  const db = new sqlite3.Database(DATABASE_FILE);
+
+  const query = 'SELECT * FROM users WHERE username = ?';
+  const values = [enteredUsername];
+
+  db.get(query, values, async (error, user) => {
+    if (error) {
+      console.error(clc.red('\n[ERROR] | » Fehler beim Überprüfen des Benutzernamens:', error.message));
+      callback(null);
+      return;
+    }
+
+    if (user) {
+      const passwordMatch = await bcrypt.compare(enteredPassword, user.password);
+
+      if (passwordMatch) {
+        const { id, username, role, token } = user;
+        const decodedToken = jwt.verify(token, JWT_TOKEN);
+
+        if (decodedToken.username === enteredUsername) {
+          callback(token);
+        } else {
+          console.error(clc.red('\nUngültiger Token für den angegebenen Benutzer!'));
+          callback(null);
+        }
+      } else {
+        console.error(clc.red('\nFalsches Passwort!'));
+        callback(null);
+      }
+    } else {
+      console.error(clc.red('\nBenutzer nicht gefunden!'));
+      callback(null);
+    }
+
+    db.close();
+  });
+};
+
 async function login() {
   try {
-    const username = readlineSync.question('\nBenutzername: ');
-    const password = readlineSync.question('Passwort: ', {
-      hideEchoBack: true
-    });
+    const enteredUsername = readlineSync.question('\nBenutzername: ');
+    const enteredPassword = readlineSync.question('Passwort: ', { hideEchoBack: true });
 
-    const response = await axios.post(`${BASE_URL}/login`, {
-      username: username,
-      password: password
+    getTokenByUsername(enteredUsername, enteredPassword, (token) => {
+      if (token) {
+        console.log(clc.whiteBright(`\nAuthentifizierung erfolgreich!\nDein Token lautet: ${token}\n`));
+      } else {
+        console.error(clc.red('Fehler bei der Authentifizierung!\n'));
+      }
     });
-
-    const { token, role } = response.data;
-    console.log(`\nWillkommen zurück, ${username} (Rolle: ${role})\nAuthentifizierung erfolgreich!\nDein Token lautet: ${token}\n`);
   } catch (error) {
-    console.error('\nFehler bei der Authentifizierung!\nIst der Server gestartet?');
+    console.error(clc.red('\nEin Fehler ist aufgetreten!'));
   }
 }
 
