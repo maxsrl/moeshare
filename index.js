@@ -1322,8 +1322,8 @@ app.get('/view/:filename', async (req, res) => {
 
             if (isImage) {
               metaTag = `<meta property="og:image" content="${BASE_URL}/uploads/${username}/${filename}" />
+        <meta property="og:image:secure_url" content="${BASE_URL}/uploads/${username}/${filename}" />
         <meta property="og:type" content="image.other"/>
-        <meta property="og:image" content="${BASE_URL}/uploads/${username}/${filename}" />
         <meta property="og:image:secure_url" content="${BASE_URL}/uploads/${username}/${filename}" />
         <meta property="og:image:type" content="image.other" />
         <meta property="og:image:alt" content="BILD" />
