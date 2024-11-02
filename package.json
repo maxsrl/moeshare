@@ -13,7 +13,7 @@
     "cli-color": "^2.0.3",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.3.1",
-    "ejs": "^3.1.9",
+    "ejs": "^3.1.10",
     "express": "^4.21.1",
     "ffprobe": "^1.1.2",
     "ffprobe-static": "^3.1.0",
